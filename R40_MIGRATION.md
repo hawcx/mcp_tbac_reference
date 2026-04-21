@@ -27,25 +27,25 @@ The `TbacTokenVerifier` exposes an `acceptR39Tokens` flag (default `true`). When
   "event": "tbac.r39_resource_fallback",
   "jti": "<jti>",
   "agent_instance_id": "<id>",
-  "message": "r39-format token with absent resource coerced to '*'; update producer to r40"
+  "message": "r39-format token with absent resource coerced to '*'; update producer to r40 or later"
 }
 ```
 
 The fallback is **version-gated** — an r40-version token that omits `resource` is a denial, not a fallback.
 
-The deprecation window closes at the revision after r40. At that point:
+The deprecation window was re-anchored in r41 §P2.1 to close at the revision after r41 (not at r41 itself — r41 is a text-only wire-compatible revision). At that closing point:
 - Set `acceptR39Tokens: false` explicitly.
 - The flag will be removed in a subsequent release.
 
 ## Producer migration (TQS)
 
-1. Bump your capability-advertisement `version` to `"2026-04-20-r40"`.
+1. Bump your capability-advertisement `version` to `"2026-04-20-r40"` (or `"2026-04-21-r41"` — both are wire-compatible and MUST interoperate per §Preamble P2.1).
 2. In your scope-authoring path, add a required `resource` field. Use `"*"` when you intend tool-wide grant.
 3. When minting a delegated token, compute the subset predicate (library function `checkAttenuation(child, parent, 'mint')`) and reject with `InvocationRejected{ reason: 'ScopeCeilingExceeded' }` on violation. This is load-bearing — the reference implementation's stub TQS demonstrates this; your production TQS MUST do it.
 
 ## Consumer migration (RS)
 
-1. Bump your capability-advertisement `version` to `"2026-04-20-r40"`.
+1. Bump your capability-advertisement `version` to `"2026-04-20-r40"` (or `"2026-04-21-r41"` — either works; the negotiator accepts both).
 2. Enable the §8.1 check at cascade Step 13. The reference cascade in this repo does this automatically — the denial code is `TBAC_SCOPE_EVALUATION` / `failed_check: TBAC_SCOPE_EVALUATION` with distinguishing internal telemetry (not visible in the denial response).
 3. Decide your policy on r39 tokens during the transition:
    - Permissive (default): `acceptR39Tokens: true`, accept r39-version tokens, emit the deprecation log.
@@ -57,6 +57,6 @@ The deprecation window closes at the revision after r40. At that point:
 - Read [`docs/resource-attenuation.md`](docs/resource-attenuation.md) for the worked walk-through.
 - See `packages/tbac-core-ts/src/scope/glob.ts` and `packages/tbac-core-ts/src/scope/attenuation.ts` — these two modules are the r40 attack defense.
 
-## Version string typo observation (for the SEP authors)
+## Version string typo — fixed in r41
 
-SEP r40 §8.1's transition paragraph refers to `"2026-04-17-r40"`. The Preamble, §2.1, and §2.2 all use `"2026-04-20-r40"`. This reference implementation treats the Preamble/§2.1 form as normative. Recommend the §8.1 transition paragraph be corrected in r41.
+SEP r40 §8.1's transition paragraph referred to `"2026-04-17-r40"`, while the Preamble, §2.1, and §2.2 all used `"2026-04-20-r40"`. This reference implementation always treated the Preamble/§2.1 form as normative. SEP r41 §P1.1 corrected the typo; §8.1 now reads `"2026-04-20-r40"`.

@@ -35,6 +35,6 @@ export function emitR39Fallback(
     event: 'tbac.r39_resource_fallback',
     jti,
     agent_instance_id,
-    message: "r39-format token with absent resource coerced to '*'; update producer to r40",
+    message: "r39-format token with absent resource coerced to '*'; update producer to r40 or later",
   });
 }

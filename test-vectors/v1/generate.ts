@@ -7,7 +7,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sha256 } from '@noble/hashes/sha2';
+// test-vectors/ is not a workspace package so module-name resolution for
+// `tbac-core` fails here. Import directly from the package source — tsx
+// handles the TypeScript compilation and this keeps the regen script
+// self-contained without a dedicated package.json.
 import {
   DOMAIN_PRIV_SIG,
   DOMAIN_REQ_ENC,
@@ -24,10 +27,11 @@ import {
   mintToken,
   scalarMulBase,
   scalarReduce64,
+  sha256,
   u64be,
   u8,
   type ScopeJson,
-} from 'tbac-core';
+} from '../../packages/tbac-core-ts/src/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const INPUTS = JSON.parse(readFileSync(resolve(__dirname, 'inputs.json'), 'utf8'));

@@ -4,6 +4,12 @@
 // serialized in strictly ascending numeric type-code order (§A.4). The
 // output bytes are the input to priv_sig (§3.4) and to the `parent_token_hash`
 // digest used in delegation checks (§8).
+//
+// §A.4 clause 4 (r41) partitions the tag space: normative range 0x01-0x7F
+// MUST be strict-rejected when unknown; vendor range 0x80-0xFE MUST be
+// silent-skipped when unknown; tag 0xFF is reserved and MUST be rejected.
+// The partition is enforced at every nesting level (scope, constraints,
+// allowed_parameters inner entries) by `enforceTagPartition` below.
 
 import type { Constraints, ScopeJson } from './schema.js';
 import { decodeTlv, encodeTlv, type TlvField } from '../wire/tlv.js';
@@ -130,10 +136,12 @@ const KNOWN_CONSTRAINT_KEY_NAMES = new Set<string>([
   'allowed_parameters',
 ]);
 
-function canonicalizeConstraints(c: Constraints): Uint8Array {
+export function canonicalizeConstraints(c: Constraints): Uint8Array {
   // §3.3: Unknown constraint fields MUST cause rejection unless `x-`-prefixed.
-  // Enforced at mint time so a well-behaved TQS cannot accidentally emit
-  // a token with an unknown constraint key.
+  // Known fields MUST also carry the right type — silently dropping a wrong-
+  // typed value would let a caller believe it minted a constrained token
+  // while the encoder omitted the constraint. Throws on either violation so
+  // a well-behaved TQS cannot accidentally emit an under-constrained token.
   for (const k of Object.keys(c)) {
     if (!KNOWN_CONSTRAINT_KEY_NAMES.has(k) && !k.startsWith('x-')) {
       throw new Error(
@@ -142,15 +150,50 @@ function canonicalizeConstraints(c: Constraints): Uint8Array {
     }
   }
   const f: TlvField[] = [];
-  if (typeof c.max_rows === 'number') f.push({ tag: CONSTRAINT_TAGS.max_rows, value: u64be(c.max_rows) });
-  if (typeof c.max_calls === 'number') f.push({ tag: CONSTRAINT_TAGS.max_calls, value: u64be(c.max_calls) });
-  if (typeof c.time_window_sec === 'number')
-    f.push({ tag: CONSTRAINT_TAGS.time_window_sec, value: u64be(c.time_window_sec) });
-  if (typeof c.require_channel_encryption === 'boolean')
-    f.push({ tag: CONSTRAINT_TAGS.require_channel_encryption, value: boolByte(c.require_channel_encryption) });
-  if (typeof c.data_classification === 'string')
+  if (c.max_rows !== undefined) {
+    if (!Number.isInteger(c.max_rows) || (c.max_rows as number) < 0) {
+      throw new Error('constraints.max_rows MUST be a non-negative integer (§3.3)');
+    }
+    f.push({ tag: CONSTRAINT_TAGS.max_rows, value: u64be(c.max_rows as number) });
+  }
+  if (c.max_calls !== undefined) {
+    if (!Number.isInteger(c.max_calls) || (c.max_calls as number) < 0) {
+      throw new Error('constraints.max_calls MUST be a non-negative integer (§3.3)');
+    }
+    f.push({ tag: CONSTRAINT_TAGS.max_calls, value: u64be(c.max_calls as number) });
+  }
+  if (c.time_window_sec !== undefined) {
+    if (!Number.isInteger(c.time_window_sec) || (c.time_window_sec as number) < 0) {
+      throw new Error('constraints.time_window_sec MUST be a non-negative integer (§3.3)');
+    }
+    f.push({ tag: CONSTRAINT_TAGS.time_window_sec, value: u64be(c.time_window_sec as number) });
+  }
+  if (c.require_channel_encryption !== undefined) {
+    if (typeof c.require_channel_encryption !== 'boolean') {
+      throw new Error('constraints.require_channel_encryption MUST be a boolean (§3.3)');
+    }
+    f.push({
+      tag: CONSTRAINT_TAGS.require_channel_encryption,
+      value: boolByte(c.require_channel_encryption),
+    });
+  }
+  if (c.data_classification !== undefined) {
+    if (typeof c.data_classification !== 'string') {
+      throw new Error('constraints.data_classification MUST be a string (§3.3)');
+    }
     f.push({ tag: CONSTRAINT_TAGS.data_classification, value: utf8.encode(c.data_classification) });
+  }
   if (c.allowed_parameters !== undefined && c.allowed_parameters !== null) {
+    if (typeof c.allowed_parameters !== 'object' || Array.isArray(c.allowed_parameters)) {
+      throw new Error('constraints.allowed_parameters MUST be a JSON object (§3.3)');
+    }
+    for (const [k, v] of Object.entries(c.allowed_parameters as Record<string, unknown>)) {
+      if (typeof v !== 'string') {
+        throw new Error(
+          `constraints.allowed_parameters["${k}"] MUST be a string pattern (§3.3)`,
+        );
+      }
+    }
     f.push({
       tag: CONSTRAINT_TAGS.allowed_parameters,
       value: encodeAllowedParameters(c.allowed_parameters),
@@ -161,12 +204,13 @@ function canonicalizeConstraints(c: Constraints): Uint8Array {
 }
 
 /**
- * Encode `allowed_parameters` per SEP §A.3 ("ascending UTF-8 byte-order").
- * §A.3.1 is referenced but not present in r40 draft — [I] we encode each
- * entry as a pair of inner TLV fields (key tag 0x01, pattern tag 0x02) and
- * emit entries in ascending byte-order of their UTF-8-encoded keys. This
- * matches the spec's ordering rule; the inner sub-tag assignment is a
- * reasonable [I] choice flagged for confirmation in r41.
+ * Encode `allowed_parameters` per SEP §A.3 and §A.3.1 (r41). Each entry is
+ * a pair of inner TLV fields — inner tag 0x01 (key, UTF-8) and inner tag
+ * 0x02 (pattern, UTF-8, literal wildcards escaped per §3.3). Entries are
+ * emitted in strictly ascending UTF-8 byte-order of their keys. An empty
+ * object encodes as an outer TLV with length 0 (see §A.3.1 "Empty object"
+ * — omission and empty-object carry different semantics; the producer-side
+ * callers decide which).
  */
 const AP_KEY_TAG = 0x01;
 const AP_PATTERN_TAG = 0x02;
@@ -218,21 +262,38 @@ function decodeAllowedParameters(bytes: Uint8Array): Record<string, string> {
   let off = 0;
   const td = new TextDecoder('utf-8');
   while (off < bytes.length) {
-    // Inner envelope: we wrote each entry as `encodeTlv([ key, pattern ])`
-    // which yields a raw concatenation of [key_tlv][pattern_tlv] bytes. So
-    // we read two TLV fields at each entry boundary.
     const keyField = readOneTlv(bytes, off);
     if (keyField === null) break;
     off = keyField.nextOff;
-    const patField = readOneTlv(bytes, off);
-    if (patField === null) break;
-    off = patField.nextOff;
-    if (keyField.tag !== AP_KEY_TAG || patField.tag !== AP_PATTERN_TAG) {
+    // §A.4 clause 4 partition enforced at the inner level too: the key slot
+    // MUST carry tag 0x01 exactly; any other normative-range tag or 0xFF is
+    // a hard reject. Vendor-range tags (0x80-0xFE) are not permitted as inner
+    // slots because §A.3.1 defines the entry layout as a fixed pair.
+    if (keyField.tag !== AP_KEY_TAG) {
       throw new Error(
-        `allowed_parameters entry has unexpected inner tags (${keyField.tag}, ${patField.tag})`,
+        `allowed_parameters inner entry: expected key tag 0x01, got 0x${keyField.tag.toString(16).padStart(2, '0')}`,
       );
     }
-    out[td.decode(keyField.value)] = td.decode(patField.value);
+    const patField = readOneTlv(bytes, off);
+    if (patField === null) {
+      throw new Error('allowed_parameters inner entry: truncated after key, pattern missing');
+    }
+    off = patField.nextOff;
+    if (patField.tag !== AP_PATTERN_TAG) {
+      throw new Error(
+        `allowed_parameters inner entry: expected pattern tag 0x02, got 0x${patField.tag.toString(16).padStart(2, '0')}`,
+      );
+    }
+    const key = td.decode(keyField.value);
+    // §A.3.1 duplicate-key rejection: JSON already forbids duplicates, so
+    // this is defense against malformed producer input that a tolerant JSON
+    // parser might have coalesced.
+    if (Object.prototype.hasOwnProperty.call(out, key)) {
+      throw new Error(
+        `allowed_parameters contains duplicate key "${key}" (§A.3.1)`,
+      );
+    }
+    out[key] = td.decode(patField.value);
   }
   return out;
 }
@@ -262,11 +323,35 @@ function readOneTlv(
   };
 }
 
+const KNOWN_SCOPE_TAGS: ReadonlySet<number> = new Set(Object.values(SCOPE_TAGS));
+const KNOWN_CONSTRAINT_TAGS: ReadonlySet<number> = new Set(Object.values(CONSTRAINT_TAGS));
+
+/**
+ * §A.4 clause 4 partition. `known` is the set of tags the SEP defines at this
+ * nesting level. Throws on an unknown normative-range tag (0x01-0x7F) or on
+ * the reserved 0xFF; returns `false` to signal the caller to silently skip
+ * vendor-range (0x80-0xFE) tags that are unrecognized at this level.
+ */
+function acceptOrRejectTag(tag: number, known: ReadonlySet<number>, site: string): boolean {
+  if (known.has(tag)) return true;
+  if (tag === 0xff) {
+    throw new Error(`${site}: tag 0xFF is reserved (§A.4)`);
+  }
+  if (tag < 0x80) {
+    throw new Error(
+      `${site}: unknown normative-range tag 0x${tag.toString(16).padStart(2, '0')} MUST be rejected (§A.4)`,
+    );
+  }
+  // Vendor range (0x80-0xFE) unknown → silent-skip per §A.4.
+  return false;
+}
+
 /** Decode TLV-canonical scope bytes back into a ScopeJson. */
 export function decanonicalizeScope(tlv: Uint8Array): ScopeJson {
   const fields = decodeTlv(tlv);
   const byTag = new Map<number, Uint8Array[]>();
   for (const f of fields) {
+    if (!acceptOrRejectTag(f.tag, KNOWN_SCOPE_TAGS, 'scope TLV')) continue;
     const arr = byTag.get(f.tag) ?? [];
     arr.push(f.value);
     byTag.set(f.tag, arr);
@@ -341,24 +426,12 @@ function decanonicalizeConstraints(b: Uint8Array): Constraints {
   const fields = decodeTlv(b);
   const by = new Map<number, Uint8Array>();
   for (const f of fields) {
-    // §3.3 defense-in-depth: reject unknown normative-range constraint tags
-    // (0x07-0x7F). Vendor tags (0x80+) are treated as advisory per §A.1.
-    const known =
-      f.tag === CONSTRAINT_TAGS.max_rows ||
-      f.tag === CONSTRAINT_TAGS.max_calls ||
-      f.tag === CONSTRAINT_TAGS.time_window_sec ||
-      f.tag === CONSTRAINT_TAGS.require_channel_encryption ||
-      f.tag === CONSTRAINT_TAGS.data_classification ||
-      f.tag === CONSTRAINT_TAGS.allowed_parameters;
-    if (!known) {
-      if (f.tag < 0x80) {
-        throw new Error(
-          `unknown constraint TLV tag 0x${f.tag.toString(16).padStart(2, '0')} in normative range — MUST be rejected per §3.3`,
-        );
-      }
-      // Vendor tag — skip (advisory).
-      continue;
-    }
+    // §A.4 clause 4 partition: strict-reject unknown normative-range (0x01-
+    // 0x7F), silent-skip unknown vendor-range (0x80-0xFE), reject reserved
+    // 0xFF. §3.3 additionally requires rejection of unknown scope-level JSON
+    // constraint keys, which is enforced at `canonicalizeConstraints` and
+    // `validateScope`; this path handles the TLV-decode side.
+    if (!acceptOrRejectTag(f.tag, KNOWN_CONSTRAINT_TAGS, 'constraints TLV')) continue;
     by.set(f.tag, f.value);
   }
   const getU = (tag: number): number | undefined => {

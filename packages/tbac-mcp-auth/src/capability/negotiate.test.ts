@@ -7,25 +7,39 @@ import {
 } from './negotiate.js';
 
 describe('capability advertisements', () => {
-  it('server advertises SEP r40 version', () => {
+  it('server advertises SEP r41 version', () => {
     const cap = buildServerCapability();
     expect(cap.capabilities.extensions?.['io.modelcontextprotocol/tbac']?.version).toBe(
-      '2026-04-20-r40',
+      '2026-04-21-r41',
     );
   });
-  it('client advertises SEP r40 version', () => {
+  it('client advertises SEP r41 version', () => {
     const cap = buildClientCapability();
     expect(cap.capabilities.extensions?.['io.modelcontextprotocol/tbac']?.version).toBe(
-      '2026-04-20-r40',
+      '2026-04-21-r41',
     );
   });
 });
 
 describe('negotiatePeer', () => {
-  it('enables TBAC when peer advertises exact r40 version', () => {
+  it('enables TBAC when peer advertises exact r41 version', () => {
     const r = negotiatePeer(buildServerCapability());
     expect(r.enabled).toBe(true);
     expect(r.acceptR39Tokens).toBe(false);
+  });
+
+  it('enables TBAC when peer advertises r40 (wire-compatible per §Preamble P2.1)', () => {
+    const r = negotiatePeer({
+      capabilities: {
+        extensions: {
+          'io.modelcontextprotocol/tbac': { version: '2026-04-20-r40', tokenFormats: ['opaque'] },
+        },
+      },
+    });
+    expect(r.enabled).toBe(true);
+    expect(r.peerVersion).toBe('2026-04-20-r40');
+    expect(r.acceptR39Tokens).toBe(false);
+    expect(r.why).toMatch(/r40 peer/);
   });
 
   it('enables r39 fallback when peer advertises r39 version', () => {
@@ -63,7 +77,7 @@ describe('negotiatePeer', () => {
     const r = negotiatePeer({
       capabilities: {
         experimental: {
-          'io.modelcontextprotocol/tbac': { version: '2026-04-20-r40', tokenFormats: ['opaque'] },
+          'io.modelcontextprotocol/tbac': { version: '2026-04-21-r41', tokenFormats: ['opaque'] },
         },
       },
     });
@@ -75,7 +89,7 @@ describe('negotiatePeer', () => {
     const r = negotiatePeer({
       capabilities: {
         extensions: {
-          'io.modelcontextprotocol/tbac': { version: '2026-04-20-r40', tokenFormats: ['opaque'] },
+          'io.modelcontextprotocol/tbac': { version: '2026-04-21-r41', tokenFormats: ['opaque'] },
         },
         experimental: {
           'io.modelcontextprotocol/tbac': { version: '2026-04-17-r39', tokenFormats: ['opaque'] },
@@ -83,7 +97,7 @@ describe('negotiatePeer', () => {
       },
     });
     expect(r.enabled).toBe(true);
-    expect(r.peerVersion).toBe('2026-04-20-r40');
+    expect(r.peerVersion).toBe('2026-04-21-r41');
     expect(r.usedExperimentalFallback).toBe(false);
   });
 });

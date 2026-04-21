@@ -1,6 +1,6 @@
 # tbac-core
 
-Core library for MCP TBAC (SEP r40). Wire format, crypto primitives, 17-step verification cascade, scope canonicalization, §8.1 glob-subset attenuation, 11 normative denial codes, pluggable in-memory stores.
+Core library for MCP TBAC (SEP r41; wire-compatible with r40). Wire format, crypto primitives, 17-step verification cascade, scope canonicalization (including §A.3.1 `allowed_parameters` inner TLV and §A.4 clause-4 unknown-tag partition), §8.1 glob-subset attenuation, 11 normative denial codes, pluggable in-memory stores.
 
 ```
 import {

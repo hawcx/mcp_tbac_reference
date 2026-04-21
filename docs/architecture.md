@@ -57,7 +57,7 @@ Cascade ordering is load-bearing. Step 6 (Schnorr verify) MUST complete before S
 
 Steps 10 and 15 split replay into reserve/commit. Step 10 is a non-destructive `GET` — fast-reject known replays. Step 15 is the atomic `SETNX` after all validation gates pass. Together they prevent "token-burn DoS" where an attacker who has the token but cannot pass PoP would otherwise permanently consume it.
 
-## r40 §8.1 defense-in-depth
+## §8.1 defense-in-depth
 
 Delegation attenuation runs at two independent sites:
 

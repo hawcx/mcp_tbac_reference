@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Scope JSON schema + r40 validation. `resource` is REQUIRED with explicit
-// `"*"` for tool-wide per §3.2. `null` / absent is a denial; transition-
-// window fallback for r39-version tokens lives in `r39_fallback.ts`.
+// Scope JSON schema + validation. `resource` is REQUIRED with explicit `"*"`
+// for tool-wide per §3.2 (normative since r40). `null` / absent is a denial;
+// the transition-window fallback for r39-version tokens lives in
+// `r39_fallback.ts` and is gated on the peer advertising r39. r41 is
+// wire-compatible with r40 and uses the same scope-JSON validation.
 
 import { denial, DENIAL_CODES, FAILED_CHECKS, type Denial } from '../denial/codes.js';
 
@@ -17,7 +19,7 @@ export interface Constraints {
   readonly [k: string]: unknown;
 }
 
-/** §3.2 scope JSON. `resource` is REQUIRED in r40. */
+/** §3.2 scope JSON. `resource` REQUIRED since r40. */
 export interface ScopeJson {
   readonly iss: string;
   readonly sub: string;
@@ -183,7 +185,7 @@ export function validateScope(
     };
   }
 
-  // r40 §3.2 resource validation with version-gated r39 fallback
+  // §3.2 resource validation with version-gated r39 fallback (r40/r41)
   let resource: string;
   let r39FallbackUsed = false;
   const rawResource = obj['resource'];
@@ -198,7 +200,7 @@ export function validateScope(
         denial: denial(
           DENIAL_CODES.SCOPE_FIELD_MISSING,
           FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
-          'resource is REQUIRED in r40 scope JSON (§3.2)',
+          'resource is REQUIRED in scope JSON (§3.2, since r40)',
         ),
       };
     }
@@ -295,6 +297,9 @@ export function validateScope(
   }
 
   // §3.3: Unknown constraint fields MUST cause rejection unless `x-`-prefixed.
+  // Known-field types MUST also match; silently dropping a wrong-typed field
+  // at canonicalization would let a caller believe it minted a constrained
+  // token while the encoder omitted the constraint.
   if (typeof obj['constraints'] === 'object' && obj['constraints'] !== null) {
     const cns = obj['constraints'] as Record<string, unknown>;
     for (const k of Object.keys(cns)) {
@@ -309,6 +314,8 @@ export function validateScope(
         };
       }
     }
+    const typeCheck = validateConstraintTypes(cns);
+    if (typeCheck !== null) return { ok: false, denial: typeCheck };
   }
 
   const scope: ScopeJson = {
@@ -356,4 +363,46 @@ function isLowerHex(s: string, expectedLen: number): boolean {
     if (!ok) return false;
   }
   return true;
+}
+
+function isNonNegativeInteger(x: unknown): x is number {
+  return typeof x === 'number' && Number.isInteger(x) && x >= 0;
+}
+
+/**
+ * §3.3 constraint type validation. Returns a Denial on the first type
+ * mismatch, or null when every present known field has the correct type.
+ * Vendor-extension (`x-`) keys are not type-checked here.
+ */
+function validateConstraintTypes(c: Record<string, unknown>): Denial | null {
+  const typeFail = (msg: string): Denial =>
+    denial(DENIAL_CODES.MALFORMED_TOKEN, FAILED_CHECKS.TBAC_SCOPE_EVALUATION, msg);
+
+  if ('max_rows' in c && !isNonNegativeInteger(c['max_rows'])) {
+    return typeFail('constraints.max_rows MUST be a non-negative integer (§3.3)');
+  }
+  if ('max_calls' in c && !isNonNegativeInteger(c['max_calls'])) {
+    return typeFail('constraints.max_calls MUST be a non-negative integer (§3.3)');
+  }
+  if ('time_window_sec' in c && !isNonNegativeInteger(c['time_window_sec'])) {
+    return typeFail('constraints.time_window_sec MUST be a non-negative integer (§3.3)');
+  }
+  if ('require_channel_encryption' in c && typeof c['require_channel_encryption'] !== 'boolean') {
+    return typeFail('constraints.require_channel_encryption MUST be a boolean (§3.3)');
+  }
+  if ('data_classification' in c && typeof c['data_classification'] !== 'string') {
+    return typeFail('constraints.data_classification MUST be a string (§3.3)');
+  }
+  if ('allowed_parameters' in c) {
+    const ap = c['allowed_parameters'];
+    if (ap === null || typeof ap !== 'object' || Array.isArray(ap)) {
+      return typeFail('constraints.allowed_parameters MUST be a JSON object (§3.3)');
+    }
+    for (const [k, v] of Object.entries(ap as Record<string, unknown>)) {
+      if (typeof v !== 'string') {
+        return typeFail(`constraints.allowed_parameters["${k}"] MUST be a string pattern (§3.3)`);
+      }
+    }
+  }
+  return null;
 }

@@ -1,7 +1,7 @@
 {
   "name": "tbac-mcp-auth",
   "version": "0.1.0",
-  "description": "MCP SDK integration for TBAC (SEP r40): AuthProvider, TokenVerifier (Express + Hono), capability negotiation.",
+  "description": "MCP SDK integration for TBAC (SEP r41): AuthProvider, TokenVerifier (Express + Hono), capability negotiation.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",

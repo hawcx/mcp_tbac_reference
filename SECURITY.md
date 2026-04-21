@@ -1,6 +1,6 @@
 # Security Policy
 
-This is a **pre-review reference implementation** of MCP TBAC SEP r40. It is not yet recommended for production use.
+This is a **pre-review reference implementation** of MCP TBAC SEP r41 (wire-compatible with r40). It is not yet recommended for production use.
 
 ## Reporting a vulnerability
 

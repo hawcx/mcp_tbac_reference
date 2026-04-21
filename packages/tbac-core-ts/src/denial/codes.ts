@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Denial codes normative to SEP r40 §6. This implementation is base-conformance
+// Denial codes normative to SEP §6. This implementation is base-conformance
 // (Profile E + Profile S, enterprise `msg_type = 0x03`). Consumer and T0
 // cascades are hook interfaces only, so consumer-only codes (16–17) and
 // intent codes are defined here for completeness but only a subset is driven
@@ -30,6 +30,9 @@ export const DENIAL_CODES = {
   SCOPE_FIELD_MISSING: 'SCOPE_FIELD_MISSING',
   SCOPE_NON_CANONICAL: 'SCOPE_NON_CANONICAL',
   NON_JSON_POP_NOT_SUPPORTED: 'NON_JSON_POP_NOT_SUPPORTED',
+  CIBA_APPROVAL_EXPIRED: 'CIBA_APPROVAL_EXPIRED',
+  APPROVAL_DIGEST_MISMATCH: 'APPROVAL_DIGEST_MISMATCH',
+  INTENT_HASH_MISMATCH: 'INTENT_HASH_MISMATCH',
 } as const;
 
 export type DenialCode = (typeof DENIAL_CODES)[keyof typeof DENIAL_CODES];
@@ -60,6 +63,9 @@ export const FAILED_CHECKS = {
   REQUEST_FRAMING: 'REQUEST_FRAMING',
   CHANNEL_ENCRYPTION_MISSING: 'CHANNEL_ENCRYPTION_MISSING',
   CONFORMANCE_SCOPE: 'CONFORMANCE_SCOPE',
+  CIBA_VALIDATION: 'CIBA_VALIDATION',
+  CIBA_DIGEST_VALIDATION: 'CIBA_DIGEST_VALIDATION',
+  INTENT_VERIFICATION: 'INTENT_VERIFICATION',
 } as const;
 
 export type FailedCheck = (typeof FAILED_CHECKS)[keyof typeof FAILED_CHECKS];

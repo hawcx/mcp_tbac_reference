@@ -69,7 +69,7 @@ describe('scope canonicalization — §3.3 unknown-constraint-tag rejection', ()
       { tag: 0x0d, value: new Uint8Array(8) }, // trust_level = 0
       { tag: 0x0e, value: new Uint8Array(8) }, // human_confirmed_at = 0
     ]);
-    expect(() => decanonicalizeScope(scopeTlvBytes)).toThrow(/unknown constraint TLV tag/);
+    expect(() => decanonicalizeScope(scopeTlvBytes)).toThrow(/unknown normative-range tag/);
   });
 
   it('decanonicalize ignores unknown vendor-range tag (0x80+)', () => {
@@ -156,5 +156,123 @@ describe('scope canonicalization — allowed_parameters (§A.3.1)', () => {
       zzz: 'last',
       aaa: 'first',
     });
+  });
+
+  it('decanonicalize rejects duplicate inner keys in allowed_parameters (§A.3.1)', () => {
+    const utf8 = new TextEncoder();
+    // Two consecutive entries for the same key "foo".
+    const entry1 = encodeTlv([
+      { tag: 0x01, value: utf8.encode('foo') },
+      { tag: 0x02, value: utf8.encode('a') },
+    ]);
+    const entry2 = encodeTlv([
+      { tag: 0x01, value: utf8.encode('foo') },
+      { tag: 0x02, value: utf8.encode('b') },
+    ]);
+    const apBytes = new Uint8Array(entry1.length + entry2.length);
+    apBytes.set(entry1, 0);
+    apBytes.set(entry2, entry1.length);
+    const constraintsTlv = encodeTlv([{ tag: 0x06, value: apBytes }]);
+    const scopeTlvBytes = encodeTlv([
+      { tag: 0x01, value: utf8.encode('iss') },
+      { tag: 0x02, value: utf8.encode('IK') },
+      { tag: 0x03, value: utf8.encode('agent') },
+      { tag: 0x04, value: utf8.encode('tool') },
+      { tag: 0x05, value: utf8.encode('read') },
+      { tag: 0x06, value: utf8.encode('*') },
+      { tag: 0x07, value: constraintsTlv },
+      { tag: 0x08, value: new Uint8Array(8) },
+      { tag: 0x0a, value: new Uint8Array([0x00]) },
+      { tag: 0x0b, value: utf8.encode('aud') },
+      { tag: 0x0c, value: utf8.encode('org') },
+      { tag: 0x0d, value: new Uint8Array(8) },
+      { tag: 0x0e, value: new Uint8Array(8) },
+    ]);
+    expect(() => decanonicalizeScope(scopeTlvBytes)).toThrow(/duplicate key/);
+  });
+
+  it('decanonicalize rejects unknown inner tag in allowed_parameters', () => {
+    const utf8 = new TextEncoder();
+    // Entry with an unexpected inner tag 0x03 instead of 0x02 (pattern).
+    const badEntry = encodeTlv([
+      { tag: 0x01, value: utf8.encode('foo') },
+      { tag: 0x03, value: utf8.encode('bar') },
+    ]);
+    const constraintsTlv = encodeTlv([{ tag: 0x06, value: badEntry }]);
+    const scopeTlvBytes = encodeTlv([
+      { tag: 0x01, value: utf8.encode('iss') },
+      { tag: 0x02, value: utf8.encode('IK') },
+      { tag: 0x03, value: utf8.encode('agent') },
+      { tag: 0x04, value: utf8.encode('tool') },
+      { tag: 0x05, value: utf8.encode('read') },
+      { tag: 0x06, value: utf8.encode('*') },
+      { tag: 0x07, value: constraintsTlv },
+      { tag: 0x08, value: new Uint8Array(8) },
+      { tag: 0x0a, value: new Uint8Array([0x00]) },
+      { tag: 0x0b, value: utf8.encode('aud') },
+      { tag: 0x0c, value: utf8.encode('org') },
+      { tag: 0x0d, value: new Uint8Array(8) },
+      { tag: 0x0e, value: new Uint8Array(8) },
+    ]);
+    expect(() => decanonicalizeScope(scopeTlvBytes)).toThrow(/pattern tag 0x02/);
+  });
+});
+
+describe('§A.4 clause 4 — unknown-tag partition policy', () => {
+  const utf8 = new TextEncoder();
+  function scopeWithExtra(extras: { tag: number; value: Uint8Array }[]): Uint8Array {
+    return encodeTlv([
+      { tag: 0x01, value: utf8.encode('iss') },
+      { tag: 0x02, value: utf8.encode('IK') },
+      { tag: 0x03, value: utf8.encode('agent') },
+      { tag: 0x04, value: utf8.encode('tool') },
+      { tag: 0x05, value: utf8.encode('read') },
+      { tag: 0x06, value: utf8.encode('*') },
+      { tag: 0x08, value: new Uint8Array(8) },
+      { tag: 0x0a, value: new Uint8Array([0x00]) },
+      { tag: 0x0b, value: utf8.encode('aud') },
+      { tag: 0x0c, value: utf8.encode('org') },
+      { tag: 0x0d, value: new Uint8Array(8) },
+      { tag: 0x0e, value: new Uint8Array(8) },
+      ...extras,
+    ]);
+  }
+
+  it('scope-level: unknown normative-range tag 0x20 MUST be rejected', () => {
+    const bytes = scopeWithExtra([{ tag: 0x20, value: new Uint8Array([0x01]) }]);
+    expect(() => decanonicalizeScope(bytes)).toThrow(/0x20/);
+  });
+
+  it('scope-level: unknown vendor-range tag 0x90 MUST be silent-skipped', () => {
+    const bytes = scopeWithExtra([{ tag: 0x90, value: new Uint8Array([0xaa]) }]);
+    expect(() => decanonicalizeScope(bytes)).not.toThrow();
+  });
+
+  it('scope-level: reserved tag 0xFF MUST be rejected at any nesting level', () => {
+    const bytes = scopeWithExtra([{ tag: 0xff, value: new Uint8Array(0) }]);
+    expect(() => decanonicalizeScope(bytes)).toThrow(/0xFF/);
+  });
+
+  it('constraints-level: reserved tag 0xFF MUST be rejected (not silent-skipped)', () => {
+    const constraintsTlv = encodeTlv([
+      { tag: 0x01, value: new Uint8Array(8) }, // max_rows
+      { tag: 0xff, value: new Uint8Array(0) }, // reserved — MUST reject
+    ]);
+    const scopeTlvBytes = encodeTlv([
+      { tag: 0x01, value: utf8.encode('iss') },
+      { tag: 0x02, value: utf8.encode('IK') },
+      { tag: 0x03, value: utf8.encode('agent') },
+      { tag: 0x04, value: utf8.encode('tool') },
+      { tag: 0x05, value: utf8.encode('read') },
+      { tag: 0x06, value: utf8.encode('*') },
+      { tag: 0x07, value: constraintsTlv },
+      { tag: 0x08, value: new Uint8Array(8) },
+      { tag: 0x0a, value: new Uint8Array([0x00]) },
+      { tag: 0x0b, value: utf8.encode('aud') },
+      { tag: 0x0c, value: utf8.encode('org') },
+      { tag: 0x0d, value: new Uint8Array(8) },
+      { tag: 0x0e, value: new Uint8Array(8) },
+    ]);
+    expect(() => decanonicalizeScope(scopeTlvBytes)).toThrow(/0xFF/);
   });
 });

@@ -1,6 +1,6 @@
 # Conformance derivations — prose trace
 
-Values in this trace are byte-identical to `expected.json`. If you are debugging an interop failure with another TBAC r40 implementation, work top-to-bottom and compare each derived value against your implementation.
+Values in this trace are byte-identical to `expected.json`. If you are debugging an interop failure with another TBAC r40/r41 implementation, work top-to-bottom and compare each derived value against your implementation. r41 is wire-compatible with r40, so these vectors apply to both revisions.
 
 ## Inputs
 
@@ -10,7 +10,7 @@ All inputs come from `inputs.json` (verbatim §A.5.1). The key fields:
 - `session_id` — `0x00000000deadbeef` (big-endian uint64 on the wire).
 - `jti` — 22-byte base64url (no padding). §A.5.1 value: `AAECAwQFBgcICQoLDA0ODw`.
 - `aud` — `https://rs.example.com/mcp`.
-- Scope JSON — r40-compliant with explicit `resource: "billing-api/invoices/2025-Q3"`.
+- Scope JSON — r40/r41-compliant with explicit `resource: "billing-api/invoices/2025-Q3"`.
 
 ## Derivations
 
@@ -78,6 +78,6 @@ These values are recorded in `expected.json` for completeness. In this reference
 
 184-byte fixed prefix (bytes 0–183) + variable `CT_body` (from byte 184). AAD bound into AES-256-GCM is exactly bytes 0–103 (`AAD_token`). The Schnorr challenge hash covers `R_tok ∥ TQS_PK ∥ SEK_PK ∥ verifier_secret ∥ GCM_tag ∥ CT_body ∥ AAD_token` per §3.0.1 Step 6.
 
-## r40 §8.1 attenuation vector
+## §8.1 attenuation vector
 
 See [`r40-attenuation.json`](r40-attenuation.json). A child scope with `resource: "*"` presented under a parent with `resource: "public/*"` MUST be rejected at both the TQS mint-gate (denial path 1) and the RS cascade Step 13 (denial path 2). The reference implementation's `pnpm demo:widening` reproduces both rejections and is the ground-truth regression signal.

@@ -9,8 +9,10 @@ Per §2.1, "Implementations MUST use **exact string matching** for version recog
 ## This implementation's version
 
 ```
-2026-04-20-r40
+2026-04-21-r41
 ```
+
+r41 is wire-compatible with r40. The negotiator accepts peers advertising either `"2026-04-21-r41"` or `"2026-04-20-r40"` per §Preamble P2.1; peers that have not bumped continue to negotiate correctly.
 
 ## Server advertisement
 
@@ -22,7 +24,7 @@ const capability = buildServerCapability({
   supportsPolicyTemplateDiscovery: true,
   maxDelegationDepth: 3,
 });
-// ⇒ { capabilities: { extensions: { 'io.modelcontextprotocol/tbac': { version: '2026-04-20-r40', ... } } } }
+// ⇒ { capabilities: { extensions: { 'io.modelcontextprotocol/tbac': { version: '2026-04-21-r41', ... } } } }
 ```
 
 ## Client advertisement
@@ -51,7 +53,7 @@ if (!r.enabled) {
 | Field | Meaning |
 |---|---|
 | `enabled` | True iff we recognize the peer's version string |
-| `peerVersion` | The peer's advertised version (may be our version, r39, or unrecognized) |
+| `peerVersion` | The peer's advertised version (may be r41, r40, r39, or unrecognized) |
 | `acceptR39Tokens` | True iff the peer advertised r39 — enables the transition-window coercion |
 | `usedExperimentalFallback` | True iff we found the extension under `experimental` rather than `extensions` |
 | `why` | Human-readable reason; useful for logging |

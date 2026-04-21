@@ -37,6 +37,7 @@ import { checkAttenuation } from '../scope/attenuation.js';
 import { isSubset } from '../scope/glob.js';
 import { emitR39Fallback, defaultFallbackSink, type FallbackSink } from '../scope/r39_fallback.js';
 import { validateScope, type ScopeJson } from '../scope/schema.js';
+import { approvalDigestHex } from '../scope/approval.js';
 import type {
   ConsumedTokenLog,
   PolicyTemplateStore,
@@ -57,6 +58,12 @@ export interface VerifyInputs {
   readonly token: Uint8Array;
   readonly now: number; // Unix seconds — injected for determinism in tests
   readonly clockSkewSec?: number; // default 60
+  /**
+   * Maximum allowed `exp - iat` (token lifetime) in seconds. §3.0 row for `exp`
+   * says `"exp - iat MUST NOT exceed max_ttl (default 60 s). Validated by RS
+   * before decryption (Step 3)."` Default 60s.
+   */
+  readonly maxTtlSec?: number;
   readonly expectedAud: string;
   /** The RS's own identifier, compared byte-exact to scope.aud after decryption. */
   readonly rsIdentifier: string;
@@ -76,6 +83,27 @@ export interface VerifyInputs {
    * carries no `allowed_parameters` constraint.
    */
   readonly toolArguments?: Record<string, unknown>;
+  /**
+   * Whether the inbound request arrived with channel encryption applied (i.e.
+   * `_meta["io.modelcontextprotocol/tbac"].enc` was present and decrypted).
+   * Scopes with `constraints.require_channel_encryption = true` (§3.3) MUST be
+   * rejected when this is false. Default false.
+   */
+  readonly requestHasEncryption?: boolean;
+  /**
+   * Maximum CIBA approval age in seconds for T3 tokens. The token is rejected
+   * if `iat - human_confirmed_at > maxApprovalAgeSec`. [I] The SEP names the
+   * freshness requirement but does not define a default window; 300 s matches
+   * the OIDC CIBA default `backchannel_authentication_request_time` freshness.
+   */
+  readonly maxApprovalAgeSec?: number;
+  /**
+   * Step 13.7 intent verification mode (§4.3 Step 13.7). `log_only` is the
+   * base-conformance default and performs only the hash-integrity check; the
+   * other two modes are hook interfaces in this reference implementation and
+   * fall through to `log_only` behavior when unset.
+   */
+  readonly intentVerificationMode?: 'log_only' | 'keyword_match' | 'classifier';
   readonly replayTtlSec?: number; // default 120
   readonly sessions: SessionStore;
   readonly replay: ReplayStore;
@@ -103,6 +131,9 @@ export interface VerifyFailure {
 export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | VerifyFailure> {
   const skew = inp.clockSkewSec ?? 60;
   const replayTtl = inp.replayTtlSec ?? 120;
+  const maxTtl = inp.maxTtlSec ?? 60;
+  const maxApprovalAge = inp.maxApprovalAgeSec ?? 300;
+  const intentMode = inp.intentVerificationMode ?? 'log_only';
 
   // ----- Step 1: framing check (§3.0.2)
   let parsed;
@@ -134,19 +165,40 @@ export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | Ve
   if (session.status !== 'active')
     return fail(DENIAL_CODES.SESSION_EXPIRED, FAILED_CHECKS.SESSION_VALIDITY);
 
-  // ----- Step 3: temporal + audience
+  // ----- Step 3: temporal + audience (and max_ttl bound per §3.0 exp row)
   const now = BigInt(inp.now);
   if (now + BigInt(skew) < h.iat) return fail(DENIAL_CODES.STALE_TIMESTAMP, FAILED_CHECKS.TEMPORAL_VALIDATION, 'iat in the future');
   if (now > h.exp + BigInt(skew))
     return fail(DENIAL_CODES.STALE_TIMESTAMP, FAILED_CHECKS.TEMPORAL_VALIDATION, 'token expired');
+  // `exp - iat` MUST NOT exceed max_ttl (default 60s). Enforced before
+  // decryption per §3.0 to cap the lifetime of any token the RS accepts.
+  if (h.exp < h.iat)
+    return fail(DENIAL_CODES.MALFORMED_TOKEN, FAILED_CHECKS.TEMPORAL_VALIDATION, 'exp precedes iat');
+  if (h.exp - h.iat > BigInt(maxTtl))
+    return fail(
+      DENIAL_CODES.STALE_TIMESTAMP,
+      FAILED_CHECKS.TEMPORAL_VALIDATION,
+      `token lifetime (exp-iat) exceeds max_ttl ${maxTtl}s (§3.0)`,
+    );
   const expectedAudHash = sha256(u8(inp.expectedAud));
   if (!constantTimeEqual(h.aud_hash, expectedAudHash))
     return fail(DENIAL_CODES.AUD_MISMATCH, FAILED_CHECKS.AUDIENCE_VALIDATION);
 
-  // ----- Step 4: session validity window
+  // ----- Step 4: session validity window + token-minted-within-window
+  // §4.3 Step 4: "the token was minted within an active session window."
+  // Both `iat` and `now` MUST fall within [session_start, session_start +
+  // max_session_duration]. A token minted after session expiry that is still
+  // fresh at presentation time MUST be rejected.
   const sessionEnd = session.session_start + session.max_session_duration;
   if (inp.now > sessionEnd)
     return fail(DENIAL_CODES.SESSION_EXPIRED, FAILED_CHECKS.SESSION_VALIDITY);
+  const iatNum = Number(h.iat);
+  if (iatNum + skew < session.session_start || iatNum > sessionEnd)
+    return fail(
+      DENIAL_CODES.SESSION_EXPIRED,
+      FAILED_CHECKS.SESSION_VALIDITY,
+      'token iat outside session validity window (§4.3 Step 4)',
+    );
 
   // ----- Step 5: key derivation
   const info_enc = concat(u8(DOMAIN_TOKEN_ENC), u8(h.jti));
@@ -304,6 +356,16 @@ export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | Ve
   }
   const scopedCons = scopeJson.constraints;
   if (scopedCons !== undefined) {
+    // §3.3: per-token `max_calls` MUST be 1 (single-use semantics). Template
+    // `max_calls` is the mint-rate ceiling and is a different axis, already
+    // checked below.
+    if (scopedCons.max_calls !== undefined && scopedCons.max_calls !== 1) {
+      return fail(
+        DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+        FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+        `per-token max_calls MUST be 1 (§3.3); got ${scopedCons.max_calls}`,
+      );
+    }
     if (
       tpl.ceiling.max_rows !== undefined &&
       typeof scopedCons.max_rows === 'number' &&
@@ -337,6 +399,18 @@ export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | Ve
         `scope.time_window_sec ${scopedCons.time_window_sec} exceeds template ceiling ${tpl.ceiling.time_window_sec}`,
       );
     }
+    // §3.3: `require_channel_encryption = true` MUST cause rejection when the
+    // inbound request did not arrive encrypted via `_meta[...].enc` (§10.2).
+    // The channel-encryption machinery itself is a hook interface in this
+    // reference implementation; `requestHasEncryption` lets the host plumb
+    // the "was `enc` decrypted?" bit into the cascade.
+    if (scopedCons.require_channel_encryption === true && inp.requestHasEncryption !== true) {
+      return fail(
+        DENIAL_CODES.CHANNEL_ENCRYPTION_REQUIRED,
+        FAILED_CHECKS.CHANNEL_ENCRYPTION_MISSING,
+        'scope requires channel encryption but request arrived in plaintext (§3.3, §10.2)',
+      );
+    }
     // ----- Step 13 — allowed_parameters enforcement (§3.3)
     if (scopedCons.allowed_parameters !== undefined) {
       const argCheck = enforceAllowedParameters(
@@ -345,6 +419,62 @@ export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | Ve
       );
       if (argCheck !== null) return argCheck;
     }
+  }
+
+  // ----- Step 13 — T3 approval-digest recomputation (§3.2).
+  // `approval_digest` is REQUIRED when `trust_level = 3` and binds the CIBA
+  // approval to the exact scope (preventing approve-benign/execute-sensitive
+  // substitution). The schema validator already asserts presence and format
+  // (64 lowercase hex). Here we recompute from the scope and compare, and
+  // enforce the approval-freshness window against `iat`.
+  if (scopeJson.trust_level === 3) {
+    const tokenDigest = scopeJson.approval_digest;
+    if (tokenDigest === undefined) {
+      // validateScope already enforces presence for T3; this is defense-in-depth.
+      return fail(
+        DENIAL_CODES.SCOPE_FIELD_MISSING,
+        FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+        'trust_level=3 requires approval_digest (§3.2)',
+      );
+    }
+    const expected = approvalDigestHex(scopeJson);
+    if (expected !== tokenDigest) {
+      return fail(
+        DENIAL_CODES.APPROVAL_DIGEST_MISMATCH,
+        FAILED_CHECKS.CIBA_DIGEST_VALIDATION,
+        'recomputed approval_digest does not match token value (§3.2)',
+      );
+    }
+    const iatSec = Number(h.iat);
+    const ageSec = iatSec - scopeJson.human_confirmed_at;
+    if (ageSec < -skew || ageSec > maxApprovalAge) {
+      return fail(
+        DENIAL_CODES.CIBA_APPROVAL_EXPIRED,
+        FAILED_CHECKS.CIBA_VALIDATION,
+        `human_confirmed_at outside approval window (age=${ageSec}s, max=${maxApprovalAge}s)`,
+      );
+    }
+  }
+
+  // ----- Step 13.7 — intent verification (§4.3).
+  // Hash-integrity check is MANDATORY whenever `user_raw_intent` and
+  // `intent_hash` are both present, regardless of `intentVerificationMode`.
+  // The mode only governs the action-comparison step that follows.
+  if (scopeJson.user_raw_intent !== undefined && scopeJson.intent_hash !== undefined) {
+    const computed = sha256(u8(scopeJson.user_raw_intent));
+    const computedHex = Array.from(computed, (x) => x.toString(16).padStart(2, '0')).join('');
+    if (computedHex !== scopeJson.intent_hash) {
+      return fail(
+        DENIAL_CODES.INTENT_HASH_MISMATCH,
+        FAILED_CHECKS.INTENT_VERIFICATION,
+        'SHA-256(user_raw_intent) does not match intent_hash (§4.3 Step 13.7)',
+      );
+    }
+    // `log_only` (base conformance): hash verified, no action comparison.
+    // `keyword_match` / `classifier`: hook interfaces — not implemented in
+    // base conformance; fall through to `log_only` behavior. Implementers
+    // that wire these modes SHOULD call the action-comparison gate here.
+    void intentMode;
   }
 
   // r40 §8.1 — RS-side delegation attenuation (defense-in-depth)

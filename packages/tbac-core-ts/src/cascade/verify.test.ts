@@ -77,7 +77,11 @@ function makeStores(scope: ScopeJson) {
     },
   });
   const consumedLog = new MemoryConsumedTokenLog();
-  return { sessions, replay, templates, consumedLog };
+  // SCOPE_A5 carries `require_channel_encryption: true` (matches §A.5.1
+  // conformance vector inputs). The fixture reports the request as encrypted
+  // so tests of unrelated cascade steps aren't coupled to the H2 gate. Tests
+  // that assert the H2 rejection behavior override this explicitly.
+  return { sessions, replay, templates, consumedLog, requestHasEncryption: true };
 }
 
 function rTokSeed(label: string): Uint8Array {

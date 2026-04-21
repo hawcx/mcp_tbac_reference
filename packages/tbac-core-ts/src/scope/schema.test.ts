@@ -20,8 +20,8 @@ function baseScope(overrides: Record<string, unknown> = {}): Record<string, unkn
   };
 }
 
-describe('§3.2 scope validation — r40 resource REQUIRED', () => {
-  it('accepts a valid r40 scope', () => {
+describe('§3.2 scope validation — resource REQUIRED (r40/r41)', () => {
+  it('accepts a valid scope with an explicit resource', () => {
     const r = validateScope(baseScope());
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.scope.resource).toBe('billing-api/invoices/2025-Q3');
@@ -66,14 +66,19 @@ describe('§3.2 scope validation — r39 transition fallback', () => {
     }
   });
 
-  it('still rejects absent resource on r40 peer even with flag on', () => {
+  it('still rejects absent resource on r40/r41 peer even with flag on', () => {
     const obj = baseScope();
     delete obj['resource'];
-    const r = validateScope(obj, {
+    const r40Result = validateScope(obj, {
       peerVersion: '2026-04-20-r40',
       acceptR39Tokens: true,
     });
-    expect(r.ok).toBe(false);
+    expect(r40Result.ok).toBe(false);
+    const r41Result = validateScope(obj, {
+      peerVersion: '2026-04-21-r41',
+      acceptR39Tokens: true,
+    });
+    expect(r41Result.ok).toBe(false);
   });
 
   it('rejects absent resource when flag is off (even with r39 peer)', () => {
@@ -243,6 +248,55 @@ describe('§3.2 scope validation — txn_id format', () => {
   it('rejects non-hex txn_id', () => {
     const r = validateScope(baseScope({ txn_id: 'z'.repeat(32) }));
     expect(r.ok).toBe(false);
+  });
+});
+
+describe('§3.3 constraint type validation (M5 audit fix)', () => {
+  it('rejects non-integer max_rows', () => {
+    const r = validateScope(baseScope({ constraints: { max_rows: 'lots' } as never }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.denial.message).toMatch(/max_rows/);
+  });
+  it('rejects negative max_rows', () => {
+    const r = validateScope(baseScope({ constraints: { max_rows: -1 } as never }));
+    expect(r.ok).toBe(false);
+  });
+  it('rejects non-boolean require_channel_encryption', () => {
+    const r = validateScope(
+      baseScope({ constraints: { require_channel_encryption: 'yes' } as never }),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.denial.message).toMatch(/require_channel_encryption/);
+  });
+  it('rejects non-string data_classification', () => {
+    const r = validateScope(baseScope({ constraints: { data_classification: 7 } as never }));
+    expect(r.ok).toBe(false);
+  });
+  it('rejects non-object allowed_parameters', () => {
+    const r = validateScope(baseScope({ constraints: { allowed_parameters: 'nope' } as never }));
+    expect(r.ok).toBe(false);
+  });
+  it('rejects non-string pattern in allowed_parameters', () => {
+    const r = validateScope(
+      baseScope({ constraints: { allowed_parameters: { file: 42 } } as never }),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.denial.message).toMatch(/allowed_parameters/);
+  });
+  it('accepts well-typed constraint object', () => {
+    const r = validateScope(
+      baseScope({
+        constraints: {
+          max_rows: 10,
+          max_calls: 1,
+          time_window_sec: 30,
+          require_channel_encryption: true,
+          data_classification: 'internal',
+          allowed_parameters: { file_path: '/reports/*' },
+        },
+      }),
+    );
+    expect(r.ok).toBe(true);
   });
 });
 

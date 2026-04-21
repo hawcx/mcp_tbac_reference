@@ -351,11 +351,11 @@ describe('Step 13 — template ceiling enforcement', () => {
   });
 
   it('accepts a scope strictly within all template ceilings', async () => {
+    // Uses trust_level 2 to decouple ceiling acceptance from T3 approval-
+    // digest / CIBA-freshness gates, which have dedicated tests below.
     const r = await mintAndVerify(
       baseScope({
-        trust_level: 3,
-        human_confirmed_at: 1_700_000_000,
-        approval_digest: 'a'.repeat(64),
+        trust_level: 2,
         constraints: { max_rows: 10, max_calls: 1, time_window_sec: 30 },
       }),
       {

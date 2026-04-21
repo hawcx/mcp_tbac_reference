@@ -6,7 +6,7 @@
 // mechanism is honored per §2.2 for SDKs that do not yet expose the
 // `capabilities.extensions` mechanism.
 
-import { EXTENSION_KEY, R39_VERSION, SEP_VERSION } from 'tbac-core';
+import { EXTENSION_KEY, R39_VERSION, SEP_VERSION, SEP_VERSION_R40 } from 'tbac-core';
 
 export interface PeerCapability {
   readonly version: string;
@@ -105,6 +105,16 @@ export function negotiatePeer(peer: CapabilityAdvertisement): NegotiationResult 
       acceptR39Tokens: false,
       usedExperimentalFallback,
       why: 'exact version match',
+    };
+  }
+  // r41 is wire-compatible with r40 (P2.1): accept r40 peers for interop.
+  if (raw.version === SEP_VERSION_R40) {
+    return {
+      enabled: true,
+      peerVersion: raw.version,
+      acceptR39Tokens: false,
+      usedExperimentalFallback,
+      why: 'r40 peer — wire-compatible with r41 per §Preamble P2.1',
     };
   }
   if (raw.version === R39_VERSION) {

@@ -1,6 +1,6 @@
-# r40 §8.1 — Resource attenuation under glob subset semantics
+# §8.1 — Resource attenuation under glob subset semantics
 
-This is the section that motivated SEP revision r40. r39 left delegation attenuation on the `resource` field ambiguous; a single widening-attack pattern could pass both the field-semantic rule and the attenuation rule, resulting in delegation-chain privilege escalation. r40 fixes the ambiguity by making `resource` REQUIRED, spelling out the glob-subset predicate, and requiring defense-in-depth enforcement at both the TQS mint-gate and the RS cascade.
+This is the section that motivated SEP revision r40 and is carried unchanged into r41 (r41 adds a clarifying paragraph on non-transitivity; no rule change). r39 left delegation attenuation on the `resource` field ambiguous; a single widening-attack pattern could pass both the field-semantic rule and the attenuation rule, resulting in delegation-chain privilege escalation. r40 fixed the ambiguity by making `resource` REQUIRED, spelling out the glob-subset predicate, and requiring defense-in-depth enforcement at both the TQS mint-gate and the RS cascade.
 
 ## The canonical widening attack
 
@@ -11,10 +11,10 @@ child:  resource = "*"
 
 The child's pattern (a single-segment wildcard matching every top-level segment) is strictly broader than the parent's. A naive implementation that read absence-as-wildcard (r39) or that only checked attenuation at one site could let the child through.
 
-**r40 requires rejection at BOTH sites.** The reference implementation demonstrates this via [`pnpm demo:widening`](../packages/tbac-mcp-auth/src/demo/delegation_widening_demo.ts):
+**§8.1 requires rejection at BOTH sites.** The reference implementation demonstrates this via [`pnpm demo:widening`](../packages/tbac-mcp-auth/src/demo/delegation_widening_demo.ts):
 
 ```
-[widening-demo] TBAC §8.1 defense-in-depth (SEP 2026-04-20-r40)
+[widening-demo] TBAC §8.1 defense-in-depth (SEP 2026-04-21-r41)
 [widening-demo] layer-1 TQS mint-gate REJECTED: ScopeCeilingExceeded
 [widening-demo] layer-2 RS cascade REJECTED: code=INSUFFICIENT_PRIVILEGE
                                               failed_check=TBAC_SCOPE_EVALUATION
@@ -22,7 +22,7 @@ The child's pattern (a single-segment wildcard matching every top-level segment)
 [widening-demo] BOTH LAYERS REJECTED — §8.1 defense-in-depth verified
 ```
 
-The named unit test `widening_attack_star_under_public_star` in [`packages/tbac-core-ts/src/scope/glob.test.ts`](../packages/tbac-core-ts/src/scope/glob.test.ts) is the ground-truth regression signal. If that test ever passes `true`, the r40 defense has been regressed and the demo will fail closed.
+The named unit test `widening_attack_star_under_public_star` in [`packages/tbac-core-ts/src/scope/glob.test.ts`](../packages/tbac-core-ts/src/scope/glob.test.ts) is the ground-truth regression signal. If that test ever passes `true`, the §8.1 defense has been regressed and the demo will fail closed. (The internal-tag prefix `r40.8.1.*` is retained for continuity with existing telemetry; the §8.1 rule itself is unchanged across r40/r41.)
 
 ## Glob-subset semantics
 
@@ -65,7 +65,7 @@ The full attenuation check is `checkAttenuation(child, parent, site)` in [`atten
 - `constraints.max_rows`, `max_calls`, `time_window_sec` each ≤ parent
 - `require_channel_encryption`: if parent required it, child must too
 
-`site = 'mint'` and `site = 'rs'` return the same `INSUFFICIENT_PRIVILEGE` / `TBAC_SCOPE_EVALUATION` denial publicly. They differ in the `internalTag` — `r40.8.1.mint_gate.*` vs `r40.8.1.rs_cascade.*` — used only in telemetry, never in the response envelope.
+`site = 'mint'` and `site = 'rs'` return the same `INSUFFICIENT_PRIVILEGE` / `TBAC_SCOPE_EVALUATION` denial publicly. They differ in the `internalTag` — `r40.8.1.mint_gate.*` vs `r40.8.1.rs_cascade.*` — used only in telemetry, never in the response envelope. The `r40.8.1` prefix names the revision that introduced the §8.1 rule; the rule text is identical in r41.
 
 ## r39 transition window
 
@@ -74,11 +74,11 @@ The full attenuation check is `checkAttenuation(child, parent, site)` in [`atten
 ```json
 { "level": "warn", "event": "tbac.r39_resource_fallback",
   "jti": "<jti>", "agent_instance_id": "<id>",
-  "message": "r39-format token with absent resource coerced to '*'; update producer to r40" }
+  "message": "r39-format token with absent resource coerced to '*'; update producer to r40 or later" }
 ```
 
-Close the window at r41 by setting `acceptR39Tokens: false`.
+r41 §P2.1 re-anchored the r39→r40 deprecation window to close at the revision after r41 (not at r41 itself). Set `acceptR39Tokens: false` when your deployment is confident it has no r39 producers left.
 
 ## Conformance vector
 
-[`test-vectors/v1/r40-attenuation.json`](../test-vectors/v1/r40-attenuation.json) fixes the canonical attack pattern. A conforming implementation that has broken r40 will fail this vector even if its crypto primitives are byte-identical to ours — attenuation is a separate axis from the derivations.
+[`test-vectors/v1/r40-attenuation.json`](../test-vectors/v1/r40-attenuation.json) fixes the canonical attack pattern. (The filename is normative per SEP r41 §Reference Implementation.) A conforming implementation that has broken §8.1 will fail this vector even if its crypto primitives are byte-identical to ours — attenuation is a separate axis from the derivations.

@@ -19,17 +19,21 @@ Two practical reasons:
 
 Per §4.3, the enterprise cascade targets <490 µs. This reference implementation is not latency-optimized but clears the same bar in CI for the §A.5.1 fixture (≤5 ms including allocation). Production deployments should use Redis for the replay/session stores.
 
+## What changed in r41?
+
+r41 is a documentation/submission-readiness revision. No wire format change, no new scope fields, no new denial codes, no cascade changes. Six text-level fixes: §A.3.1 now specifies the `allowed_parameters` inner TLV encoding; §A.4 clause 4 adds the unknown-tag partition policy; §8.1 gets a version-string typo fix and a non-transitivity clarification; the r39→r40 deprecation window is re-anchored to close after r41; and the §Reference Implementation section is rewritten to point at this repo. r41 peers and r40 peers MUST interoperate (§Preamble P2.1).
+
 ## What changed in r40?
 
-See [`R40_MIGRATION.md`](../R40_MIGRATION.md). Short version: `resource` is now REQUIRED; the canonical widening attack is rejected at both TQS mint-gate and RS cascade.
+See [`R40_MIGRATION.md`](../R40_MIGRATION.md). Short version: `resource` is REQUIRED; the canonical widening attack is rejected at both TQS mint-gate and RS cascade.
 
 ## Is this the final version of the SEP?
 
-No — pre-review revisions r26–r40 are draft. Breaking changes may still occur. Version strings are exact-match (§2.1) specifically to ensure implementations negotiate to compatible peers during this phase.
+No — pre-review revisions r26–r41 are draft. Breaking changes may still occur. Version strings are exact-match (§2.1) specifically to ensure implementations negotiate to compatible peers during this phase.
 
 ## Where can I discuss bugs or propose changes?
 
-- Implementation bugs in this repo: open an issue at `https://github.com/hawcx/hx_mcp_tbac`.
+- Implementation bugs in this repo: open an issue at `https://github.com/hawcx/mcp_tbac_reference`.
 - SEP design questions: engage with the MCP extension-repo discussion once the SEP is submitted.
 - Security issues: `security@hawcx.com` per [`SECURITY.md`](../SECURITY.md).
 

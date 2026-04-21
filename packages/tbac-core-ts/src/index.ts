@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-export { SEP_VERSION, R39_VERSION, EXTENSION_KEY } from './version.js';
+export { SEP_VERSION, SEP_VERSION_R40, R39_VERSION, EXTENSION_KEY } from './version.js';
 export * as wire from './wire/index.js';
 export * as crypto from './crypto/index.js';
 export * as scope from './scope/index.js';
@@ -33,7 +33,9 @@ export {
   ALL_DOMAINS,
 } from './crypto/hkdf.js';
 export { hmacSha256, constantTimeEqual } from './crypto/hmac.js';
-export { canonicalizeScope, decanonicalizeScope } from './scope/canonical.js';
+export { sha256 } from './crypto/sha256.js';
+export { canonicalizeScope, decanonicalizeScope, canonicalizeConstraints } from './scope/canonical.js';
+export { computeApprovalDigest, approvalDigestHex } from './scope/approval.js';
 export {
   checkAttenuation,
   type AttenuationSite,

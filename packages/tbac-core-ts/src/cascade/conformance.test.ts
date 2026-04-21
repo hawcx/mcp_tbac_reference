@@ -47,7 +47,7 @@ function fromHex(h: string): Uint8Array {
 describe('conformance vectors (test-vectors/v1)', () => {
   it('reports the normative SEP version', () => {
     expect(SEP_VERSION).toBe(expected.sep_version);
-    expect(SEP_VERSION).toBe('2026-04-20-r40');
+    expect(SEP_VERSION).toBe('2026-04-21-r41');
   });
 
   it('aud_hash matches §A.5.4 expectation', () => {

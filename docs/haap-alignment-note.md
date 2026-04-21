@@ -1,6 +1,6 @@
 # HAAP alignment note (SEP §12)
 
-SEP r40 §12 directly discusses alignment and divergence between the TBAC extension and the HAAP Canonical Specification v6.0.0. This note exists because the SEP itself references HAAP by name; it documents, from the reference implementation's side, how the two fit together.
+SEP §12 directly discusses alignment and divergence between the TBAC extension and the HAAP Canonical Specification v6.0.0. This note exists because the SEP itself references HAAP by name; it documents, from the reference implementation's side, how the two fit together. r41 (current) and r40 agree on §12 content.
 
 If you are not implementing against HAAP, you can skip this document — the SEP and this implementation stand on their own.
 
@@ -21,7 +21,7 @@ Per §12, the following are aligned with HAAP v6.0.0 Build 885a9acf16a78e4a:
 
 The SEP makes two intentional deviations to make tokens first-class MCP citizens:
 
-| Axis | HAAP v6.0.0 | SEP r40 |
+| Axis | HAAP v6.0.0 | SEP r41 (wire-compatible with r40) |
 |---|---|---|
 | Token attachment | `Authorization: HAAP <token>` HTTP header | `_meta["io.modelcontextprotocol/tbac"].token` |
 | PoP proof | `HAAP-PoP` HTTP header | `_meta[...].pop.sig` |
@@ -32,7 +32,7 @@ The transport change ensures tokens remain visible to MCP message-processing lay
 
 ## Byte-level interop
 
-A conformant SEP r40 implementation and a current HAAP v6.0.0 implementation do NOT interoperate byte-level out of the box. They agree on cryptographic construction and cascade logic but disagree on both transport framing and domain-separation labels. Byte-level interop requires either:
+A conformant SEP r40/r41 implementation and a current HAAP v6.0.0 implementation do NOT interoperate byte-level out of the box. They agree on cryptographic construction and cascade logic but disagree on both transport framing and domain-separation labels. Byte-level interop requires either:
 
 - A conformance mode in the HAAP SDK that swaps in the `tbac-*` strings and the MCP `_meta` wire format, or
 - A protocol adapter that translates between the two wire formats at a trust boundary.

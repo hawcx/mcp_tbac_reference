@@ -1,6 +1,6 @@
 # Rust Implementation — Deferred
 
-SEP r40 is wire-format-interoperable regardless of implementation language. An early discussion considered shipping a Rust crate (`tbac-core-rs`) alongside the TypeScript packages to match the HAAP canonical spec's reference language.
+SEP r41 (wire-compatible with r40) is wire-format-interoperable regardless of implementation language. An early discussion considered shipping a Rust crate (`tbac-core-rs`) alongside the TypeScript packages to match the HAAP canonical spec's reference language.
 
 **Decision for v1:** TypeScript only.
 
@@ -22,4 +22,4 @@ Add a Rust package to the workspace if any of the following become true:
 - A latency-sensitive edge deployment cannot tolerate the Node.js AEAD throughput.
 - The conformance test vectors uncover a behavior that is hard to express in TypeScript's crypto stack but easy in Rust.
 
-Until then, the TypeScript implementation is the reference for SEP r40.
+Until then, the TypeScript implementation is the reference for SEP r41.

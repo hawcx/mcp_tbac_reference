@@ -12,7 +12,7 @@ The 17-step enterprise cascade from SEP §4.3. Each step is a pure transformatio
 | **6** | **Schnorr verify** (Ristretto255) | `INVALID_SIGNATURE` / `SCHNORR_VERIFICATION` |
 | **7** | **AES-GCM decrypt** (AFTER Schnorr verify) | `DECRYPTION_FAILED` / `AEAD_DECRYPTION` |
 | 8 | `mutual_auth` constant-time compare | `MUTUAL_AUTH_MISMATCH` / `MUTUAL_AUTH_CHECK` |
-| 9 | `verifier_secret` compare + scope canonicalization + r40 §3.2 validation | `VERIFIER_SECRET_MISMATCH` / `VERIFIER_SECRET_CHECK`, or `SCOPE_FIELD_MISSING` / `TBAC_SCOPE_EVALUATION` |
+| 9 | `verifier_secret` compare + scope canonicalization + §3.2 validation (r40/r41) | `VERIFIER_SECRET_MISMATCH` / `VERIFIER_SECRET_CHECK`, or `SCOPE_FIELD_MISSING` / `TBAC_SCOPE_EVALUATION` |
 | 10 | Replay pre-check (non-destructive) | `TOKEN_REPLAYED` / `REPLAY_CONSUME` |
 | 11 | `policy_epoch` vs RS current | `EPOCH_EXPIRED` / `POLICY_EPOCH_VALIDATION` |
 | 12 | `priv_sig` HMAC | `PRIVILEGE_SIG_INVALID` / `PRIVILEGE_SIGNATURE` |

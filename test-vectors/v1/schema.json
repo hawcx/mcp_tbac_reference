@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "TBAC SEP r40 expected.json",
+  "title": "TBAC SEP r41 expected.json",
   "type": "object",
   "required": [
     "sep_version",

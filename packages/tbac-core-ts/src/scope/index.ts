@@ -4,3 +4,4 @@ export * from './schema.js';
 export * from './attenuation.js';
 export * from './r39_fallback.js';
 export * from './canonical.js';
+export * from './approval.js';
