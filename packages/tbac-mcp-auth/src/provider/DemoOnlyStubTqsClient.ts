@@ -27,7 +27,7 @@ import {
   type ScopeJson,
   type MintedToken,
 } from 'tbac-core';
-import { sha256 } from '@noble/hashes/sha2';
+import { randomBytes } from 'node:crypto';
 
 export interface DequeueArgs {
   readonly agent_instance_id: string;
@@ -68,18 +68,24 @@ export interface StubTqsOpts {
   readonly SEK_PK?: Uint8Array; // defaults to (scalar=7)*G for §A.5 compat
   /** Returns Unix-seconds "now". Test injectable. */
   readonly now?: () => number;
-  /** Mutable counter for deterministic jti generation in tests. */
-  readonly jtiPrefix?: string;
+  /**
+   * Test-only CSPRNG override. If provided, supplies the bytes used for
+   * `jti`, `token_iv`, and `r_tok` seeds. Do NOT use in production; the
+   * whole point of `randomBytes` is to use the platform CSPRNG. Production
+   * implementations of this interface should NEVER expose such a hook.
+   */
+  readonly _testRandom?: (n: number) => Uint8Array;
 }
 
 let demoWarningEmitted = false;
 
 export class DemoOnlyStubTqsClient implements TqsClient {
-  private jtiCounter = 0;
   private readonly sekPk: Uint8Array;
+  private readonly rand: (n: number) => Uint8Array;
 
   constructor(private readonly opts: StubTqsOpts) {
     this.sekPk = opts.SEK_PK ?? scalarMulBase(7n);
+    this.rand = opts._testRandom ?? ((n) => new Uint8Array(randomBytes(n).buffer));
     if (!demoWarningEmitted && process.env['TBAC_SUPPRESS_DEMO_WARNING'] !== '1') {
       demoWarningEmitted = true;
       // eslint-disable-next-line no-console
@@ -118,16 +124,13 @@ export class DemoOnlyStubTqsClient implements TqsClient {
       }
     }
 
-    const jti = this.generateJti();
-    const token_iv = this.generateIv();
-    const rTokSeed = sha256(
-      new TextEncoder().encode(
-        `stub-tqs-rtok:${jti}:${this.opts.session_id}:${Math.random()}`,
-      ),
-    );
-    const rTokSeed64 = new Uint8Array(64);
-    rTokSeed64.set(rTokSeed, 0);
-    rTokSeed64.set(rTokSeed, 32);
+    // All three sources use CSPRNG (node's crypto.randomBytes by default).
+    // §3.0.3 requires 128-bit CSPRNG for jti, globally-unique IV, and
+    // CSPRNG for the Schnorr nonce (reuse of r_tok with the same tqs_sk
+    // leaks the signing key).
+    const jti = Buffer.from(this.rand(16)).toString('base64url');
+    const token_iv = this.rand(12);
+    const rTokSeed64 = this.rand(64);
 
     const minted = mintToken({
       K_session: this.opts.K_session,
@@ -147,29 +150,4 @@ export class DemoOnlyStubTqsClient implements TqsClient {
     return { token: minted.token, scope, minted };
   }
 
-  private generateJti(): string {
-    // 16 bytes → 22 b64url chars (no padding). We use a deterministic source
-    // so tests can mint repeatable tokens.
-    const seed = new Uint8Array(16);
-    const c = ++this.jtiCounter;
-    seed[0] = (c >> 8) & 0xff;
-    seed[1] = c & 0xff;
-    const prefix = new TextEncoder().encode(this.opts.jtiPrefix ?? 'stub');
-    for (let i = 0; i < Math.min(seed.length - 2, prefix.length); i++) {
-      seed[2 + i] = prefix[i]!;
-    }
-    return Buffer.from(seed).toString('base64url');
-  }
-
-  private generateIv(): Uint8Array {
-    const iv = new Uint8Array(12);
-    iv[0] = 0x01;
-    iv[1] = 0x02;
-    iv[2] = 0x03;
-    iv[3] = 0x04;
-    const c = ++this.ivCounter;
-    for (let i = 0; i < 8; i++) iv[11 - i] = (c >> (i * 8)) & 0xff;
-    return iv;
-  }
-  private ivCounter = 0;
 }

@@ -68,7 +68,26 @@ export function isSubset(child: string, parent: string): boolean {
   if (typeof child !== 'string' || typeof parent !== 'string') return false;
   const c = parsePattern(child);
   const p = parsePattern(parent);
+  // §8.1 literal-prefix rule: when both patterns are pure literals, `child
+  // ⊆ parent` iff parent is a path-segment-boundary prefix of child. Example
+  // from the SEP: "public/docs/api" ⊆ "public/docs", but "public/docs" is
+  // NOT ⊆ "public/do". Literal grants carry implicit prefix-extension
+  // semantics ("grant of foo/bar covers foo/bar and everything under it").
+  if (isAllLiteral(c) && isAllLiteral(p)) {
+    if (p.length > c.length) return false;
+    for (let i = 0; i < p.length; i++) {
+      if ((p[i] as { value: string }).value !== (c[i] as { value: string }).value) {
+        return false;
+      }
+    }
+    return true;
+  }
   return segmentsSubset(c, p);
+}
+
+function isAllLiteral(segs: Segment[]): boolean {
+  for (const s of segs) if (s.kind !== 'literal') return false;
+  return true;
 }
 
 function segmentsSubset(child: Segment[], parent: Segment[]): boolean {

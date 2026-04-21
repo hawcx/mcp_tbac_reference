@@ -84,19 +84,33 @@ describe('§8.1 glob-subset predicate — literal-vs-literal rules', () => {
     expect(isSubset('alpha', 'alpha')).toBe(true);
   });
 
-  it('literal prefix at segment boundary → subset', () => {
-    expect(isSubset('public/docs/api', 'public/docs')).toBe(false);
-    // SEP §8.1: literal-vs-literal requires exact byte-equality across the
-    // compared length. "public/docs/api" has three segments; "public/docs"
-    // has two. Different segment count ⇒ not a subset.
+  it('literal prefix at segment boundary → subset (§8.1 canonical example)', () => {
+    // SEP §8.1 verbatim: child is a subset of parent iff parent is an exact
+    // prefix of child at a path-segment boundary. Literal grants carry
+    // implicit prefix-extension semantics — a grant of "public/docs" also
+    // authorizes "public/docs/*".
+    expect(isSubset('public/docs/api', 'public/docs')).toBe(true);
+    expect(isSubset('public/docs/api/v2', 'public/docs')).toBe(true);
   });
 
   it('literal byte-prefix that is NOT a path-segment prefix → NOT subset', () => {
+    // "public/do" is a byte-prefix of "public/docs" but NOT at a path-segment
+    // boundary (the next char is "c", not "/").
     expect(isSubset('public/docs', 'public/do')).toBe(false);
+  });
+
+  it('reverse direction — broader literal under narrower literal → NOT subset', () => {
+    // "public/docs" is strictly broader than "public/docs/api". Attempting
+    // to widen via delegation must fail.
+    expect(isSubset('public/docs', 'public/docs/api')).toBe(false);
   });
 
   it('distinct literals of the same length → NOT subset', () => {
     expect(isSubset('alpha', 'beta')).toBe(false);
+  });
+
+  it('distinct literals at same depth → NOT subset', () => {
+    expect(isSubset('public/docs', 'public/api')).toBe(false);
   });
 });
 

@@ -44,6 +44,8 @@ The subset predicate lives at [`packages/tbac-core-ts/src/scope/glob.ts`](../pac
 | `public/*` | `public/*` | ✓ | equal |
 | `public/docs` | `public/*` | ✓ | literal under single wildcard at matching depth |
 | `public/docs/api` | `public/**` | ✓ | literal under double wildcard |
+| `public/docs/api` | `public/docs` | ✓ | literal prefix at path-segment boundary (§8.1 canonical example — literal grants cover descendants) |
+| `public/docs` | `public/docs/api` | ✗ | broader grant under narrower — reverse widening |
 | `public/docs/api` | `public/*` | ✗ | three segments vs. two — single wildcard is one segment |
 | `public/docs` | `public/do` | ✗ | not path-segment aligned |
 | `*` | `public/*` | ✗ **widening attack** | single wildcard matches more than `public/*` |

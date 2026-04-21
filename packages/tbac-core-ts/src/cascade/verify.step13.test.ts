@@ -111,6 +111,77 @@ function mintAndVerify(
   });
 }
 
+describe('Step 13 — literal resource grant covers path-boundary descendants (§8.1)', () => {
+  const tpl: PolicyTemplate = {
+    currentEpoch: EPOCH,
+    ceiling: { allowed_actions: ['read'] },
+  };
+
+  it('grant "public/docs" authorizes request "public/docs/api"', async () => {
+    const scope = baseScope({ resource: 'public/docs' });
+    const minted = mintToken({
+      K_session,
+      verifier_secret: VS,
+      mutual_auth: MA,
+      SEK_PK,
+      session_id: SESSION_ID,
+      policy_epoch: EPOCH,
+      iat: IAT,
+      exp: EXP,
+      token_iv: TOKEN_IV,
+      jti: JTI,
+      scope,
+      response_key: RK,
+      rTokSeed: freshRTokSeed('literal-prefix-allow'),
+    });
+    const stores = makeStoresFor(scope, tpl);
+    const r = await verifyToken({
+      token: minted.token,
+      now: IAT + 5,
+      expectedAud: AUD,
+      rsIdentifier: AUD,
+      rsCurrentEpoch: EPOCH,
+      requestedTool: scope.tool,
+      requestedAction: 'read',
+      requestedResource: 'public/docs/api', // descendant — must be allowed
+      ...stores,
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it('grant "public/docs" does NOT authorize request "public/do" (not path-segment-aligned)', async () => {
+    const scope = baseScope({ resource: 'public/docs' });
+    const minted = mintToken({
+      K_session,
+      verifier_secret: VS,
+      mutual_auth: MA,
+      SEK_PK,
+      session_id: SESSION_ID,
+      policy_epoch: EPOCH,
+      iat: IAT,
+      exp: EXP,
+      token_iv: TOKEN_IV,
+      jti: JTI,
+      scope,
+      response_key: RK,
+      rTokSeed: freshRTokSeed('literal-prefix-deny'),
+    });
+    const stores = makeStoresFor(scope, tpl);
+    const r = await verifyToken({
+      token: minted.token,
+      now: IAT + 5,
+      expectedAud: AUD,
+      rsIdentifier: AUD,
+      rsCurrentEpoch: EPOCH,
+      requestedTool: scope.tool,
+      requestedAction: 'read',
+      requestedResource: 'public/do', // byte-prefix but NOT path-segment-aligned
+      ...stores,
+    });
+    expect(r.ok).toBe(false);
+  });
+});
+
 describe('Step 13 — requestedTool binding', () => {
   const tpl: PolicyTemplate = {
     currentEpoch: EPOCH,
