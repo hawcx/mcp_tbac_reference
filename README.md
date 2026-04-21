@@ -9,6 +9,8 @@ Apache 2.0 · Pre-review draft · TypeScript · Interoperable with any SEP r40-c
 
 TBAC binds each tool invocation to a **single-use, parameter-bound, cryptographically sealed authorization token**. Instead of session-scoped OAuth bearer tokens, every `tools/call` carries a token whose scope was authored by the policy component and sealed by the TQS at mint time, then verified by a 17-step cascade at the Resource Server. If an agent is compromised, the attacker inherits authorization for **one call** — not the session.
 
+> **For reviewers:** See [`IMPLEMENTATION_SUMMARY.md`](IMPLEMENTATION_SUMMARY.md) for a single-page orientation covering coverage-by-SEP-section, deferred items, `[I]` deviations to flag for r41, and reproduction commands.
+
 ## Quickstart
 
 ```bash
