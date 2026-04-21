@@ -22,7 +22,7 @@ import {
   verifyToken,
   type ScopeJson,
 } from '@hawcx/tbac-core';
-import { InvocationRejected, StubTqsClient } from '../provider/TqsClient.js';
+import { DemoOnlyStubTqsClient, InvocationRejected } from '../provider/DemoOnlyStubTqsClient.js';
 
 async function main(): Promise<number> {
   console.log(`[widening-demo] TBAC §8.1 defense-in-depth (SEP ${SEP_VERSION})`);
@@ -37,7 +37,7 @@ async function main(): Promise<number> {
   const RS_URL = 'https://rs.example.com/mcp';
   const clock = () => 1_760_000_000;
 
-  const tqs = new StubTqsClient({
+  const tqs = new DemoOnlyStubTqsClient({
     K_session,
     session_id,
     policy_epoch,

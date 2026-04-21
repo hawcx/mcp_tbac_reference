@@ -205,6 +205,85 @@ export function validateScope(
     resource = rawResource;
   }
 
+  // §3.2 conditional fields for T3 and intent-bearing tokens.
+  // approval_digest: REQUIRED and 64 lowercase hex when trust_level=3;
+  //                  MUST be absent when trust_level ∈ {0,1,2}.
+  const rawApprovalDigest = obj['approval_digest'];
+  if (tl === 3) {
+    if (typeof rawApprovalDigest !== 'string' || !isLowerHex(rawApprovalDigest, 64)) {
+      return {
+        ok: false,
+        denial: denial(
+          DENIAL_CODES.SCOPE_FIELD_MISSING,
+          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          'trust_level=3 requires approval_digest as 64 lowercase hex chars (§3.2)',
+        ),
+      };
+    }
+  } else if (rawApprovalDigest !== undefined && rawApprovalDigest !== null) {
+    return {
+      ok: false,
+      denial: denial(
+        DENIAL_CODES.SCOPE_FIELD_MISSING,
+        FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+        'approval_digest MUST be absent when trust_level ∈ {0,1,2} (§3.2)',
+      ),
+    };
+  }
+
+  // user_raw_intent ↔ intent_hash coupling. When either is present both MUST
+  // be present; intent_hash is SHA-256 hex (64 lowercase chars); user_raw_intent
+  // MUST be ≤ 4096 bytes (§3.2).
+  const rawIntent = obj['user_raw_intent'];
+  const rawIntentHash = obj['intent_hash'];
+  if (rawIntent !== undefined || rawIntentHash !== undefined) {
+    if (typeof rawIntent !== 'string' || typeof rawIntentHash !== 'string') {
+      return {
+        ok: false,
+        denial: denial(
+          DENIAL_CODES.SCOPE_FIELD_MISSING,
+          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          'user_raw_intent and intent_hash MUST both be present or both absent (§3.2)',
+        ),
+      };
+    }
+    if (new TextEncoder().encode(rawIntent).length > 4096) {
+      return {
+        ok: false,
+        denial: denial(
+          DENIAL_CODES.SCOPE_FIELD_MISSING,
+          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          'user_raw_intent exceeds 4096 UTF-8 bytes (§3.2)',
+        ),
+      };
+    }
+    if (!isLowerHex(rawIntentHash, 64)) {
+      return {
+        ok: false,
+        denial: denial(
+          DENIAL_CODES.SCOPE_FIELD_MISSING,
+          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          'intent_hash MUST be 64 lowercase hex chars (§3.2)',
+        ),
+      };
+    }
+  }
+
+  // txn_id is a 16-byte CSPRNG value encoded as 32 lowercase hex chars (§3.2).
+  const rawTxn = obj['txn_id'];
+  if (rawTxn !== undefined && rawTxn !== null) {
+    if (typeof rawTxn !== 'string' || !isLowerHex(rawTxn, 32)) {
+      return {
+        ok: false,
+        denial: denial(
+          DENIAL_CODES.SCOPE_FIELD_MISSING,
+          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          'txn_id MUST be 32 lowercase hex chars (16-byte CSPRNG value, §3.2)',
+        ),
+      };
+    }
+  }
+
   const scope: ScopeJson = {
     iss: obj['iss'] as string,
     sub: obj['sub'] as string,
@@ -240,4 +319,14 @@ export function validateScope(
   };
 
   return { ok: true, value: { scope, r39FallbackUsed } };
+}
+
+function isLowerHex(s: string, expectedLen: number): boolean {
+  if (s.length !== expectedLen) return false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    const ok = (c >= 0x30 && c <= 0x39) || (c >= 0x61 && c <= 0x66); // 0-9 or a-f
+    if (!ok) return false;
+  }
+  return true;
 }

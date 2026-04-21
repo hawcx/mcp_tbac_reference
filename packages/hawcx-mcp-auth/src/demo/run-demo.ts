@@ -14,7 +14,7 @@ import {
   SEP_VERSION,
   scalarMulBase,
 } from '@hawcx/tbac-core';
-import { StubTqsClient } from '../provider/TqsClient.js';
+import { DemoOnlyStubTqsClient } from '../provider/DemoOnlyStubTqsClient.js';
 import { TbacAuthProvider } from '../provider/TbacAuthProvider.js';
 import { TbacTokenVerifier } from '../verifier/TbacTokenVerifier.js';
 
@@ -33,7 +33,7 @@ async function main(): Promise<number> {
 
   // --- Client side: TQS + AuthProvider
   const clock = () => 1_750_000_000;
-  const tqs = new StubTqsClient({
+  const tqs = new DemoOnlyStubTqsClient({
     K_session,
     session_id,
     policy_epoch,

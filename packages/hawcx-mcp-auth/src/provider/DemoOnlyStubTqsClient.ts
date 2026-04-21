@@ -1,11 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Stub TQS for demos and tests. This is NOT a production TQS — it has no
-// real session-bootstrap path, no CIBA, no intent verification. What it
-// DOES have that IS load-bearing: the §8.1 mint-gate attenuation check.
-// When minting a delegated token, the stub invokes `checkAttenuation(child,
-// parent, 'mint')` and throws `InvocationRejected` on violation. This is
-// the r40 defense-in-depth mint side.
+// DEMO-ONLY stub TQS.
+//
+// This class is explicitly NOT a production TQS. It exists to:
+//   (1) make `pnpm demo` runnable end-to-end,
+//   (2) exercise the §8.1 mint-gate attenuation check (which IS normative and
+//       lives in @hawcx/tbac-core — this class only calls it),
+//   (3) give integrators a working minimal example of the `TqsClient`
+//       interface shape.
+//
+// DO NOT USE THIS IN PRODUCTION. It has:
+//   - no real X3DH session bootstrap
+//   - no CIBA, no intent verification, no PoP
+//   - a predictable counter-based `jti` (§3.0 requires 128-bit CSPRNG)
+//   - a predictable counter-based IV (§3.0 requires per-token unique IV)
+//   - Math.random() in the Schnorr nonce seed (§3.0.1 requires CSPRNG;
+//     nonce reuse leaks the signing key)
+//
+// A production TQS MUST replace all four of those with CSPRNG output from
+// `crypto.getRandomValues` / `crypto.randomBytes` / platform equivalent.
 
 import {
   checkAttenuation,
@@ -59,12 +72,22 @@ export interface StubTqsOpts {
   readonly jtiPrefix?: string;
 }
 
-export class StubTqsClient implements TqsClient {
+let demoWarningEmitted = false;
+
+export class DemoOnlyStubTqsClient implements TqsClient {
   private jtiCounter = 0;
   private readonly sekPk: Uint8Array;
 
   constructor(private readonly opts: StubTqsOpts) {
     this.sekPk = opts.SEK_PK ?? scalarMulBase(7n);
+    if (!demoWarningEmitted && process.env['TBAC_SUPPRESS_DEMO_WARNING'] !== '1') {
+      demoWarningEmitted = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[tbac] DemoOnlyStubTqsClient instantiated — this is NOT a production TQS. ' +
+          'See the module docstring. Set TBAC_SUPPRESS_DEMO_WARNING=1 to silence.',
+      );
+    }
   }
 
   async dequeueToken(args: DequeueArgs): Promise<{ token: Uint8Array; scope: ScopeJson; minted: MintedToken }> {

@@ -7,7 +7,7 @@
 
 import { SEP_VERSION } from '@hawcx/tbac-core';
 import { embedToken } from '../meta/embed.js';
-import type { TqsClient, DequeueArgs } from './TqsClient.js';
+import type { TqsClient, DequeueArgs } from './DemoOnlyStubTqsClient.js';
 
 export interface AttachOptions extends DequeueArgs {
   /** MCP JSON-RPC request object to decorate. */

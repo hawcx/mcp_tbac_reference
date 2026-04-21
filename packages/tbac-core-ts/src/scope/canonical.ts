@@ -131,9 +131,116 @@ function canonicalizeConstraints(c: Constraints): Uint8Array {
     f.push({ tag: CONSTRAINT_TAGS.require_channel_encryption, value: boolByte(c.require_channel_encryption) });
   if (typeof c.data_classification === 'string')
     f.push({ tag: CONSTRAINT_TAGS.data_classification, value: utf8.encode(c.data_classification) });
-  // allowed_parameters omitted from canonical form in this revision.
+  if (c.allowed_parameters !== undefined && c.allowed_parameters !== null) {
+    f.push({
+      tag: CONSTRAINT_TAGS.allowed_parameters,
+      value: encodeAllowedParameters(c.allowed_parameters),
+    });
+  }
   f.sort((a, b) => a.tag - b.tag);
   return encodeTlv(f);
+}
+
+/**
+ * Encode `allowed_parameters` per SEP §A.3 ("ascending UTF-8 byte-order").
+ * §A.3.1 is referenced but not present in r40 draft — [I] we encode each
+ * entry as a pair of inner TLV fields (key tag 0x01, pattern tag 0x02) and
+ * emit entries in ascending byte-order of their UTF-8-encoded keys. This
+ * matches the spec's ordering rule; the inner sub-tag assignment is a
+ * reasonable [I] choice flagged for confirmation in r41.
+ */
+const AP_KEY_TAG = 0x01;
+const AP_PATTERN_TAG = 0x02;
+
+function encodeAllowedParameters(map: Record<string, string>): Uint8Array {
+  const entries = Object.entries(map).filter(
+    ([, v]) => typeof v === 'string',
+  );
+  // Sort by ascending UTF-8 byte-order of keys (§A.3).
+  const encoded = entries.map(
+    ([k, v]) => [utf8.encode(k), utf8.encode(v)] as const,
+  );
+  encoded.sort(([ak], [bk]) => compareBytes(ak, bk));
+  const parts: Uint8Array[] = [];
+  for (const [k, v] of encoded) {
+    parts.push(
+      encodeTlv([
+        { tag: AP_KEY_TAG, value: k },
+        { tag: AP_PATTERN_TAG, value: v },
+      ]),
+    );
+  }
+  // Concatenate entries.
+  let total = 0;
+  for (const p of parts) total += p.length;
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const p of parts) {
+    out.set(p, off);
+    off += p.length;
+  }
+  return out;
+}
+
+function compareBytes(a: Uint8Array, b: Uint8Array): number {
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const d = a[i]! - b[i]!;
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  if (a.length !== b.length) return a.length < b.length ? -1 : 1;
+  return 0;
+}
+
+function decodeAllowedParameters(bytes: Uint8Array): Record<string, string> {
+  const out: Record<string, string> = {};
+  // Walk the byte stream as a concatenation of inner TLV-pairs. Each entry's
+  // outer TLV is itself two TLV fields; we decode them pairwise.
+  let off = 0;
+  const td = new TextDecoder('utf-8');
+  while (off < bytes.length) {
+    // Inner envelope: we wrote each entry as `encodeTlv([ key, pattern ])`
+    // which yields a raw concatenation of [key_tlv][pattern_tlv] bytes. So
+    // we read two TLV fields at each entry boundary.
+    const keyField = readOneTlv(bytes, off);
+    if (keyField === null) break;
+    off = keyField.nextOff;
+    const patField = readOneTlv(bytes, off);
+    if (patField === null) break;
+    off = patField.nextOff;
+    if (keyField.tag !== AP_KEY_TAG || patField.tag !== AP_PATTERN_TAG) {
+      throw new Error(
+        `allowed_parameters entry has unexpected inner tags (${keyField.tag}, ${patField.tag})`,
+      );
+    }
+    out[td.decode(keyField.value)] = td.decode(patField.value);
+  }
+  return out;
+}
+
+function readOneTlv(
+  bytes: Uint8Array,
+  off: number,
+): { tag: number; value: Uint8Array; nextOff: number } | null {
+  if (off + 2 > bytes.length) return null;
+  const tag = bytes[off]!;
+  const lenHi = bytes[off + 1]!;
+  let len: number;
+  let hdrLen: number;
+  if ((lenHi & 0x80) === 0) {
+    len = lenHi;
+    hdrLen = 2;
+  } else {
+    if (off + 3 > bytes.length) throw new Error('truncated length byte');
+    len = ((lenHi & 0x7f) << 8) | bytes[off + 2]!;
+    hdrLen = 3;
+  }
+  if (off + hdrLen + len > bytes.length) throw new Error('truncated value');
+  return {
+    tag,
+    value: bytes.slice(off + hdrLen, off + hdrLen + len),
+    nextOff: off + hdrLen + len,
+  };
 }
 
 /** Decode TLV-canonical scope bytes back into a ScopeJson. */
@@ -232,6 +339,8 @@ function decanonicalizeConstraints(b: Uint8Array): Constraints {
   if (rce !== undefined) out['require_channel_encryption'] = rce.length > 0 && rce[0] !== 0;
   const dc = by.get(CONSTRAINT_TAGS.data_classification);
   if (dc !== undefined) out['data_classification'] = new TextDecoder().decode(dc);
+  const ap = by.get(CONSTRAINT_TAGS.allowed_parameters);
+  if (ap !== undefined) out['allowed_parameters'] = decodeAllowedParameters(ap);
   return out as Constraints;
 }
 

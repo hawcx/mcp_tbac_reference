@@ -10,12 +10,12 @@ import {
   scalarMulBase,
   verifyToken,
 } from '@hawcx/tbac-core';
-import { InvocationRejected, StubTqsClient } from './TqsClient.js';
+import { DemoOnlyStubTqsClient, InvocationRejected } from './DemoOnlyStubTqsClient.js';
 import type { ScopeJson } from '@hawcx/tbac-core';
 
 function makeTqs() {
   const K_session = new Uint8Array(32).fill(0x42);
-  return new StubTqsClient({
+  return new DemoOnlyStubTqsClient({
     K_session,
     session_id: 0x01n,
     policy_epoch: 1n,
@@ -27,7 +27,7 @@ function makeTqs() {
   });
 }
 
-describe('StubTqsClient', () => {
+describe('DemoOnlyStubTqsClient', () => {
   it('mints a basic token end-to-end', async () => {
     const tqs = makeTqs();
     const r = await tqs.dequeueToken({
@@ -109,7 +109,7 @@ describe('StubTqsClient', () => {
     const K_session = new Uint8Array(32).fill(0x42);
     const vs = sha256(new TextEncoder().encode('vs'));
     const ma = sha256(new TextEncoder().encode('ma'));
-    const tqs = new StubTqsClient({
+    const tqs = new DemoOnlyStubTqsClient({
       K_session,
       session_id: 0x01n,
       policy_epoch: 1n,

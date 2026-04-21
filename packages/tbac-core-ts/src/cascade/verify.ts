@@ -63,6 +63,12 @@ export interface VerifyInputs {
   readonly rsCurrentEpoch: bigint;
   readonly requestedAction: string;
   readonly requestedResource: string;
+  /**
+   * Decrypted tool arguments (MCP `params.arguments`), needed for Step 13's
+   * `allowed_parameters` enforcement (§3.3). MAY be omitted when the scope
+   * carries no `allowed_parameters` constraint.
+   */
+  readonly toolArguments?: Record<string, unknown>;
   readonly replayTtlSec?: number; // default 120
   readonly sessions: SessionStore;
   readonly replay: ReplayStore;
@@ -258,6 +264,72 @@ export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | Ve
     );
   }
 
+  // ----- Step 13 — template ceilings (§7): min_trust_level, permitted_audiences, numeric bounds.
+  if (
+    tpl.ceiling.min_trust_level !== undefined &&
+    scopeJson.trust_level < tpl.ceiling.min_trust_level
+  ) {
+    return fail(
+      DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+      FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+      `trust_level ${scopeJson.trust_level} below template min ${tpl.ceiling.min_trust_level}`,
+    );
+  }
+  if (
+    tpl.ceiling.permitted_audiences !== undefined &&
+    !tpl.ceiling.permitted_audiences.includes(scopeJson.aud)
+  ) {
+    return fail(
+      DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+      FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+      `aud "${scopeJson.aud}" not in template's permitted_audiences`,
+    );
+  }
+  const scopedCons = scopeJson.constraints;
+  if (scopedCons !== undefined) {
+    if (
+      tpl.ceiling.max_rows !== undefined &&
+      typeof scopedCons.max_rows === 'number' &&
+      scopedCons.max_rows > tpl.ceiling.max_rows
+    ) {
+      return fail(
+        DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+        FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+        `scope.max_rows ${scopedCons.max_rows} exceeds template ceiling ${tpl.ceiling.max_rows}`,
+      );
+    }
+    if (
+      tpl.ceiling.max_calls !== undefined &&
+      typeof scopedCons.max_calls === 'number' &&
+      scopedCons.max_calls > tpl.ceiling.max_calls
+    ) {
+      return fail(
+        DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+        FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+        `scope.max_calls ${scopedCons.max_calls} exceeds template ceiling ${tpl.ceiling.max_calls}`,
+      );
+    }
+    if (
+      tpl.ceiling.time_window_sec !== undefined &&
+      typeof scopedCons.time_window_sec === 'number' &&
+      scopedCons.time_window_sec > tpl.ceiling.time_window_sec
+    ) {
+      return fail(
+        DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+        FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+        `scope.time_window_sec ${scopedCons.time_window_sec} exceeds template ceiling ${tpl.ceiling.time_window_sec}`,
+      );
+    }
+    // ----- Step 13 — allowed_parameters enforcement (§3.3)
+    if (scopedCons.allowed_parameters !== undefined) {
+      const argCheck = enforceAllowedParameters(
+        scopedCons.allowed_parameters,
+        inp.toolArguments ?? {},
+      );
+      if (argCheck !== null) return argCheck;
+    }
+  }
+
   // r40 §8.1 — RS-side delegation attenuation (defense-in-depth)
   if (scopeJson.parent_token_hash !== undefined && inp.consumedLog !== undefined) {
     const parent = await inp.consumedLog.lookupParent(scopeJson.parent_token_hash);
@@ -298,6 +370,116 @@ export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | Ve
 function requestedResourceIsAuthorized(requested: string, granted: string): boolean {
   // The scope is the grant; the request must fall within it under §8.1 semantics.
   return isSubset(requested, granted);
+}
+
+/**
+ * §3.3 `allowed_parameters` pattern matching. Keys not present in the
+ * constraint map are unconstrained (scope narrows via other axes); keys
+ * present MUST match their pattern. An argument key in the tool call that is
+ * NOT in `allowed_parameters` but also NOT prefixed with `x-` vendor-extension
+ * prefix is rejected if the scope has an `allowed_parameters` constraint at
+ * all — the presence of the constraint means "only these keys, please".
+ *
+ * Pattern syntax per §3.3: `*` matches any bytes except `/`, `**` matches any
+ * bytes including `/`, `?` matches any single byte except `/`. Escapes: `\*`,
+ * `\?`, `\\`. Matching is on raw UTF-8 byte sequences.
+ */
+function enforceAllowedParameters(
+  allowed: Record<string, string>,
+  actualArgs: Record<string, unknown>,
+): VerifyFailure | null {
+  for (const [argKey, argValue] of Object.entries(actualArgs)) {
+    const pattern = allowed[argKey];
+    if (pattern === undefined) {
+      if (argKey.startsWith('x-')) continue; // vendor extension: advisory
+      return {
+        ok: false,
+        denial: denial(
+          DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          `tool argument "${argKey}" not declared in allowed_parameters`,
+        ),
+      };
+    }
+    if (typeof argValue !== 'string') {
+      return {
+        ok: false,
+        denial: denial(
+          DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          `tool argument "${argKey}" is not a string — allowed_parameters only matches strings`,
+        ),
+      };
+    }
+    if (!globMatch(argValue, pattern)) {
+      return {
+        ok: false,
+        denial: denial(
+          DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          `tool argument "${argKey}" does not match allowed_parameters pattern`,
+        ),
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Byte-level glob matcher for §3.3 `allowed_parameters`:
+ *   `*`  — any bytes except 0x2F ('/')
+ *   `**` — any bytes including 0x2F
+ *   `?`  — any single byte except 0x2F
+ *   `\*` `\?` `\\` — literal escapes.
+ */
+function globMatch(value: string, pattern: string): boolean {
+  const v = new TextEncoder().encode(value);
+  const p = new TextEncoder().encode(pattern);
+  return globMatchBytes(v, 0, p, 0);
+}
+
+function globMatchBytes(v: Uint8Array, vi: number, p: Uint8Array, pi: number): boolean {
+  while (pi < p.length) {
+    const pc = p[pi]!;
+    if (pc === 0x5c /* \ */ && pi + 1 < p.length) {
+      // escape
+      if (vi >= v.length || v[vi] !== p[pi + 1]) return false;
+      vi += 1;
+      pi += 2;
+      continue;
+    }
+    if (pc === 0x2a /* * */) {
+      if (pi + 1 < p.length && p[pi + 1] === 0x2a) {
+        // `**` — greedy match including '/'
+        if (pi + 2 >= p.length) return true;
+        for (let k = vi; k <= v.length; k++) {
+          if (globMatchBytes(v, k, p, pi + 2)) return true;
+        }
+        return false;
+      }
+      // `*` — greedy match excluding '/'
+      if (pi + 1 >= p.length) {
+        for (let k = vi; k < v.length; k++) if (v[k] === 0x2f) return false;
+        return true;
+      }
+      for (let k = vi; k <= v.length; k++) {
+        if (globMatchBytes(v, k, p, pi + 1)) return true;
+        if (k < v.length && v[k] === 0x2f) return false;
+      }
+      return false;
+    }
+    if (pc === 0x3f /* ? */) {
+      if (vi >= v.length || v[vi] === 0x2f) return false;
+      vi += 1;
+      pi += 1;
+      continue;
+    }
+    // literal byte
+    if (vi >= v.length || v[vi] !== pc) return false;
+    vi += 1;
+    pi += 1;
+  }
+  return vi === v.length;
 }
 
 function fail(code: string, failedCheck: string, message?: string): VerifyFailure {

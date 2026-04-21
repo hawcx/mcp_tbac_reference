@@ -120,12 +120,128 @@ describe('§3.2 scope validation — trust_level and human_confirmed_at', () => 
     const r = validateScope(baseScope({ trust_level: 2, human_confirmed_at: 1_700_000_000 }));
     expect(r.ok).toBe(false);
   });
-  it('trust_level 3 with timestamp passes', () => {
-    const r = validateScope(baseScope({ trust_level: 3, human_confirmed_at: 1_700_000_000 }));
+  it('trust_level 3 with timestamp + approval_digest passes', () => {
+    const r = validateScope(
+      baseScope({
+        trust_level: 3,
+        human_confirmed_at: 1_700_000_000,
+        approval_digest: 'a'.repeat(64),
+      }),
+    );
     expect(r.ok).toBe(true);
   });
   it('rejects malformed trust_level', () => {
     const r = validateScope(baseScope({ trust_level: 5 }));
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe('§3.2 scope validation — T3 approval_digest', () => {
+  const hex64 = 'a'.repeat(64);
+
+  it('trust_level=3 requires approval_digest', () => {
+    const r = validateScope(baseScope({ trust_level: 3, human_confirmed_at: 1_700_000_000 }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.denial.message).toMatch(/approval_digest/);
+  });
+
+  it('trust_level=3 with valid approval_digest passes', () => {
+    const r = validateScope(
+      baseScope({ trust_level: 3, human_confirmed_at: 1_700_000_000, approval_digest: hex64 }),
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it('trust_level=3 rejects non-hex approval_digest', () => {
+    const r = validateScope(
+      baseScope({
+        trust_level: 3,
+        human_confirmed_at: 1_700_000_000,
+        approval_digest: 'Z'.repeat(64),
+      }),
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it('trust_level=3 rejects uppercase hex (normative lowercase)', () => {
+    const r = validateScope(
+      baseScope({
+        trust_level: 3,
+        human_confirmed_at: 1_700_000_000,
+        approval_digest: 'A'.repeat(64),
+      }),
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it('trust_level=3 rejects wrong-length approval_digest', () => {
+    const r = validateScope(
+      baseScope({
+        trust_level: 3,
+        human_confirmed_at: 1_700_000_000,
+        approval_digest: 'a'.repeat(63),
+      }),
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it('trust_level<3 rejects stray approval_digest', () => {
+    const r = validateScope(baseScope({ trust_level: 2, approval_digest: hex64 }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.denial.message).toMatch(/approval_digest MUST be absent/);
+  });
+});
+
+describe('§3.2 scope validation — intent coupling', () => {
+  const hex64 = 'b'.repeat(64);
+
+  it('user_raw_intent without intent_hash is rejected', () => {
+    const r = validateScope(baseScope({ user_raw_intent: 'do X' }));
+    expect(r.ok).toBe(false);
+  });
+
+  it('intent_hash without user_raw_intent is rejected', () => {
+    const r = validateScope(baseScope({ intent_hash: hex64 }));
+    expect(r.ok).toBe(false);
+  });
+
+  it('both present with valid hex passes', () => {
+    const r = validateScope(
+      baseScope({ user_raw_intent: 'do X', intent_hash: hex64 }),
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it('intent_hash non-hex is rejected', () => {
+    const r = validateScope(
+      baseScope({ user_raw_intent: 'do X', intent_hash: 'not-hex'.padEnd(64, 'z') }),
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it('user_raw_intent over 4096 UTF-8 bytes is rejected', () => {
+    const r = validateScope(
+      baseScope({ user_raw_intent: 'x'.repeat(4097), intent_hash: hex64 }),
+    );
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe('§3.2 scope validation — txn_id format', () => {
+  const hex32 = '0123456789abcdef'.repeat(2);
+
+  it('accepts 32 lowercase hex chars', () => {
+    const r = validateScope(baseScope({ txn_id: hex32 }));
+    expect(r.ok).toBe(true);
+  });
+
+  it('rejects wrong-length txn_id', () => {
+    const r = validateScope(baseScope({ txn_id: 'abc' }));
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects non-hex txn_id', () => {
+    const r = validateScope(baseScope({ txn_id: 'z'.repeat(32) }));
     expect(r.ok).toBe(false);
   });
 });
