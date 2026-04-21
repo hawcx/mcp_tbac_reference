@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TBAC SEP r40 expected.json",
+  "type": "object",
+  "required": [
+    "sep_version",
+    "aud_hash_hex",
+    "K_tok_enc_hex",
+    "tqs_sk_hex",
+    "TQS_PK_hex",
+    "K_priv_hex",
+    "priv_sig_hex",
+    "K_req_hex",
+    "K_resp_hex",
+    "IV_resp_hex",
+    "scope_tlv_hex",
+    "token_hex"
+  ],
+  "properties": {
+    "sep_version": { "type": "string" },
+    "aud_hash_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "K_tok_enc_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "tqs_sk_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "TQS_PK_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "K_priv_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "priv_sig_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "K_req_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "K_resp_hex": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "IV_resp_hex": { "type": "string", "pattern": "^[0-9a-f]{24}$" },
+    "scope_tlv_hex": { "type": "string", "pattern": "^[0-9a-f]+$" },
+    "token_hex": { "type": "string", "pattern": "^[0-9a-f]+$" }
+  }
+}

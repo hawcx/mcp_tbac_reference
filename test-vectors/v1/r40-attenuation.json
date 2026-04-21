@@ -1,0 +1,45 @@
+{
+  "_comment": "r40 §8.1 widening-attack vector. A conformant implementation MUST reject the child at BOTH the TQS mint-gate and the RS cascade Step 13. A conforming implementation that has broken r40 will fail this vector even if the crypto primitives pass.",
+  "parent": {
+    "iss": "policy-engine-test",
+    "sub": "IK:test-client-fingerprint",
+    "agent_instance_id": "test-agent",
+    "tool": "query_database",
+    "action": "read",
+    "aud": "https://rs.example.com/mcp",
+    "resource": "public/*",
+    "delegation_depth": 2,
+    "org_id": "org-a-prod",
+    "trust_level": 1,
+    "human_confirmed_at": 0
+  },
+  "child": {
+    "iss": "policy-engine-test",
+    "sub": "IK:test-client-fingerprint",
+    "agent_instance_id": "test-agent",
+    "tool": "query_database",
+    "action": "read",
+    "aud": "https://rs.example.com/mcp",
+    "resource": "*",
+    "delegation_depth": 1,
+    "org_id": "org-a-prod",
+    "trust_level": 1,
+    "human_confirmed_at": 0
+  },
+  "expect": {
+    "mint_gate": {
+      "reject": true,
+      "reason": "ScopeCeilingExceeded",
+      "denial_code": "INSUFFICIENT_PRIVILEGE",
+      "failed_check": "TBAC_SCOPE_EVALUATION",
+      "internalTag_prefix": "r40.8.1.mint_gate."
+    },
+    "rs_cascade": {
+      "reject": true,
+      "reason": "TBAC_SCOPE_EVALUATION",
+      "denial_code": "INSUFFICIENT_PRIVILEGE",
+      "failed_check": "TBAC_SCOPE_EVALUATION",
+      "internalTag_prefix": "r40.8.1.rs_cascade."
+    }
+  }
+}

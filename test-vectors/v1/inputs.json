@@ -1,0 +1,35 @@
+{
+  "_comment": "Fixed test inputs transcribed verbatim from SEP §A.5.1. All hex is lowercase with no 0x prefix and no whitespace. Keys appear in the same order as in the SEP.",
+  "K_session_hex": "a1b2c3d4e5f60718293a4b5c6d7e8f900102030405060708090a0b0c0d0e0f10",
+  "session_id_hex": "00000000deadbeef",
+  "policy_epoch": 1,
+  "jti": "AAECAwQFBgcICQoLDA0ODw",
+  "aud": "https://rs.example.com/mcp",
+  "iat": 1741305600,
+  "exp": 1741305660,
+  "token_iv_hex": "010203040000000000000001",
+  "SEK_scalar_hex": "0000000000000000000000000000000000000000000000000000000000000007",
+  "verifier_secret_src": "test-verifier-secret",
+  "mutual_auth_src": "test-mutual-auth",
+  "response_key_src": "test-response-key",
+  "scope": {
+    "iss": "policy-engine-test",
+    "sub": "IK:test-client-fingerprint",
+    "aud": "https://rs.example.com/mcp",
+    "agent_instance_id": "test-agent",
+    "tool": "query_database",
+    "action": "read",
+    "resource": "billing-api/invoices/2025-Q3",
+    "constraints": {
+      "max_rows": 100,
+      "time_window_sec": 30,
+      "max_calls": 1,
+      "require_channel_encryption": true
+    },
+    "delegation_depth": 0,
+    "require_pop": false,
+    "org_id": "org-a-prod",
+    "trust_level": 2,
+    "human_confirmed_at": 0
+  }
+}

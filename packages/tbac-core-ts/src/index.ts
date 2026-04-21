@@ -15,6 +15,7 @@ export {
   GROUP_ORDER,
 } from './crypto/schnorr.js';
 export { hkdfSha256, u8, u64be, concat, ZERO_SALT_32 } from './crypto/hkdf.js';
+export { hmacSha256, constantTimeEqual } from './crypto/hmac.js';
 export { canonicalizeScope, decanonicalizeScope } from './scope/canonical.js';
 export {
   checkAttenuation,

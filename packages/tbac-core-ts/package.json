@@ -18,7 +18,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "vectors:generate": "tsx test-vectors/generate.ts"
+    "vectors:generate": "tsx ../../test-vectors/v1/generate.ts"
   },
   "dependencies": {
     "@noble/ciphers": "^0.5.0",
