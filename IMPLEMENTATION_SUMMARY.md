@@ -11,7 +11,7 @@ A clean-room TypeScript reference implementation of MCP Task-Based Access Contro
 
 | Axis | State |
 |---|---|
-| Tests | **233 passing** (209 core + 24 MCP) across 21 test files |
+| Tests | **234 passing** (210 core + 24 MCP) across 21 test files |
 | Typecheck | Clean (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) |
 | Coverage | ≥96% lines/statements on core; `glob.ts` and `attenuation.ts` at 100% branch |
 | Conformance vectors | Byte-identical regeneration; CI diff guard |
@@ -100,17 +100,17 @@ TBAC_SUPPRESS_DEMO_WARNING=1 pnpm demo:widening
 bash scripts/no-haap-prefix.sh
 ```
 
-Expected: 192 tests pass, zero diff on `expected.json`, both demos exit 0, guard reports "OK: no 'haap-' prefix leaks in source."
+Expected: 234 tests pass, zero diff on `expected.json`, both demos exit 0, guard reports "OK: no 'haap-' prefix leaks in source."
 
 ## Submission checklist
 
 - [x] Apache 2.0 licensed, SPDX headers, `NOTICE` with patent non-assertion mirror
 - [x] Package names neutral (`tbac-core`, `tbac-mcp-auth`)
-- [x] No Hawcx/HAAP branding on the public surface
+- [x] No Hawcx/HAAP branding **in library source** under `packages/` (`scripts/no-haap-prefix.sh` guard). Attribution to Hawcx Inc. is intentionally preserved in `NOTICE` (Apache 2.0 requirement), in `SECURITY.md` and `docs/faq.md` vulnerability-contact routing (the MCP ext-auth inbox does not exist during the pre-review phase), and in `docs/haap-alignment-note.md` (which documents SEP §12 alignment by design). The SEP r41 §Reference Implementation section itself names `github.com/hawcx/mcp_tbac_reference` as the reference repo.
 - [x] SEP §Reference Implementation section points at this repo, `tbac-core`, `tbac-mcp-auth`, and `test-vectors/v1/`
 - [x] Conformance vectors under `test-vectors/v1/` with CI drift guard
 - [x] Three rounds of independent audit passed
-- [x] 233 tests passing (post-r41 migration + audit-fix + H2 SDK plumbing baseline)
+- [x] 234 tests passing (post-r41 migration + audit fixes + H2 SDK plumbing + §6 intent-code alignment)
 - [x] Clean-room CI guard enforced
 - [x] GitHub repo renamed to `mcp_tbac_reference`
 - [x] SEP revision bumped to r41 (wire-compatible text-only fixes)

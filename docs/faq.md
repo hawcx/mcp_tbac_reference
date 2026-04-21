@@ -39,4 +39,4 @@ No — pre-review revisions r26–r41 are draft. Breaking changes may still occu
 
 ## Does this implement the entire SEP?
 
-Base conformance only. Consumer profile (`msg_type = 0x08`), T0 ephemeral (`0x09`), response encryption (`K_req`/`K_resp`), intent verification Step 13.7, non-JSON PoP (`request_format = 0x01`), HAAPI billing, and cipher-suite negotiation are hook interfaces with the SEP's default behaviors. See the "OUT OF SCOPE" section in the main [`README.md`](../README.md).
+Base conformance. The mandatory parts of Step 13.7 — the `SHA-256(user_raw_intent) == intent_hash` integrity check and the 4096-byte payload cap — are enforced in the cascade. The action-comparison modes at Step 13.7 (`keyword_match`, `classifier`) are hook interfaces and default to `log_only`. Consumer profile (`msg_type = 0x08`), T0 ephemeral (`0x09`), response encryption (`K_req`/`K_resp`), non-JSON PoP (`request_format = 0x01`), HAAPI billing, and cipher-suite negotiation are hook interfaces with the SEP's default behaviors. See the "OUT OF SCOPE" section in the main [`README.md`](../README.md).

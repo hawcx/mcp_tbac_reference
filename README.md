@@ -65,9 +65,9 @@ The `pnpm demo:widening` script is the ground-truth regression test: it fails cl
 
 ## Scope (IN / OUT)
 
-**IN:** Profile E (Assembler, enterprise, `msg_type = 0x03`) and Profile S (direct-attach) tokens; 17-step cascade; HKDF / Ristretto255 Schnorr / AES-256-GCM with the `tbac-*` domain strings from SEP §A.5 and §12.2; `_meta["io.modelcontextprotocol/tbac"]` transport with `experimental` fallback; §8.1 glob-subset predicate with defense-in-depth at both sites; §A.3.1 `allowed_parameters` inner TLV encoding and §A.4 clause-4 unknown-tag partition; conformance test vectors derived from §A.5; two demos.
+**IN:** Profile E (Assembler, enterprise, `msg_type = 0x03`) and Profile S (direct-attach) tokens; 17-step cascade; HKDF / Ristretto255 Schnorr / AES-256-GCM with the `tbac-*` domain strings from SEP §A.5 and §12.2; `_meta["io.modelcontextprotocol/tbac"]` transport with `experimental` fallback; §8.1 glob-subset predicate with defense-in-depth at both sites; §A.3.1 `allowed_parameters` inner TLV encoding and §A.4 clause-4 unknown-tag partition; `max_ttl` + token-minted-within-session enforcement (§3.0, §4.3 Step 4); `require_channel_encryption` enforcement (§3.3); T3 `approval_digest` recomputation + CIBA freshness (§3.2); Step 13.7 intent-hash integrity (§4.3); conformance test vectors derived from §A.5; two demos.
 
-**OUT (hook interfaces only):** Consumer profile (`0x08`), T0 ephemeral profile (`0x09`), response encryption (`K_req`/`K_resp` — plaintext in the demo), intent verification Step 13.7 (default `log_only` no-op), non-JSON PoP (`request_format = 0x01` — rejected at mint-gate per §3.6.1), HAAPI billing, cipher-suite negotiation. Rust is deferred; see [`RUST_DEFERRED.md`](RUST_DEFERRED.md).
+**OUT (hook interfaces only):** Consumer profile (`0x08`), T0 ephemeral profile (`0x09`), response encryption (`K_req`/`K_resp` — plaintext in the demo), Step 13.7 intent-action comparison modes `keyword_match` and `classifier` (hash-integrity portion IS enforced; action-comparison default is `log_only`), non-JSON PoP (`request_format = 0x01` — rejected at mint-gate per §3.6.1), HAAPI billing, cipher-suite negotiation. Rust is deferred; see [`RUST_DEFERRED.md`](RUST_DEFERRED.md).
 
 ## License and patents
 

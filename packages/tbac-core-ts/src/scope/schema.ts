@@ -263,8 +263,8 @@ export function validateScope(
       return {
         ok: false,
         denial: denial(
-          DENIAL_CODES.SCOPE_FIELD_MISSING,
-          FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+          DENIAL_CODES.INTENT_PAYLOAD_TOO_LARGE,
+          FAILED_CHECKS.INTENT_VALIDATION,
           'user_raw_intent exceeds 4096 UTF-8 bytes (§3.2)',
         ),
       };

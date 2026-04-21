@@ -335,8 +335,8 @@ describe('H4 — intent hash integrity (§4.3 Step 13.7)', () => {
     const r = await mintAndVerify(scope, 'h4-mismatch');
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.denial.code).toBe('INTENT_HASH_MISMATCH');
-      expect(r.denial.failedCheck).toBe('INTENT_VERIFICATION');
+      expect(r.denial.code).toBe('INTENT_INTEGRITY_FAILED');
+      expect(r.denial.failedCheck).toBe('INTENT_HASH_CHECK');
     }
   });
 
@@ -351,7 +351,20 @@ describe('H4 — intent hash integrity (§4.3 Step 13.7)', () => {
       intentVerificationMode: 'log_only',
     });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.denial.code).toBe('INTENT_HASH_MISMATCH');
+    if (!r.ok) expect(r.denial.code).toBe('INTENT_INTEGRITY_FAILED');
+  });
+
+  it('rejects user_raw_intent exceeding 4096 UTF-8 bytes with INTENT_PAYLOAD_TOO_LARGE', async () => {
+    // schema.ts rejects the oversize case at validation time; assert the
+    // §6 code rather than the generic SCOPE_FIELD_MISSING path.
+    const long = 'x'.repeat(4097);
+    const scope = baseScope({ user_raw_intent: long, intent_hash: 'a'.repeat(64) });
+    const r = await mintAndVerify(scope, 'h4-oversize');
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.denial.code).toBe('INTENT_PAYLOAD_TOO_LARGE');
+      expect(r.denial.failedCheck).toBe('INTENT_VALIDATION');
+    }
   });
 });
 

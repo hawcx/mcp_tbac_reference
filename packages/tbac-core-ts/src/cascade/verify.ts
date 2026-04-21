@@ -465,8 +465,8 @@ export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | Ve
     const computedHex = Array.from(computed, (x) => x.toString(16).padStart(2, '0')).join('');
     if (computedHex !== scopeJson.intent_hash) {
       return fail(
-        DENIAL_CODES.INTENT_HASH_MISMATCH,
-        FAILED_CHECKS.INTENT_VERIFICATION,
+        DENIAL_CODES.INTENT_INTEGRITY_FAILED,
+        FAILED_CHECKS.INTENT_HASH_CHECK,
         'SHA-256(user_raw_intent) does not match intent_hash (§4.3 Step 13.7)',
       );
     }
