@@ -14,4 +14,4 @@ export {
   negotiatePeer,
   type PeerCapability,
 } from './capability/negotiate.js';
-export { embedToken, extractToken } from './meta/embed.js';
+export { embedToken, extractToken, extractTbacMeta, type ExtractedMeta, type TbacMetaFields } from './meta/embed.js';

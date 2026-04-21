@@ -11,7 +11,7 @@ A clean-room TypeScript reference implementation of MCP Task-Based Access Contro
 
 | Axis | State |
 |---|---|
-| Tests | **225 passing** (209 core + 16 MCP) across 20 test files |
+| Tests | **233 passing** (209 core + 24 MCP) across 21 test files |
 | Typecheck | Clean (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) |
 | Coverage | ≥96% lines/statements on core; `glob.ts` and `attenuation.ts` at 100% branch |
 | Conformance vectors | Byte-identical regeneration; CI diff guard |
@@ -110,7 +110,7 @@ Expected: 192 tests pass, zero diff on `expected.json`, both demos exit 0, guard
 - [x] SEP §Reference Implementation section points at this repo, `tbac-core`, `tbac-mcp-auth`, and `test-vectors/v1/`
 - [x] Conformance vectors under `test-vectors/v1/` with CI drift guard
 - [x] Three rounds of independent audit passed
-- [x] 225 tests passing (post-r41 migration + audit-fix baseline)
+- [x] 233 tests passing (post-r41 migration + audit-fix + H2 SDK plumbing baseline)
 - [x] Clean-room CI guard enforced
 - [x] GitHub repo renamed to `mcp_tbac_reference`
 - [x] SEP revision bumped to r41 (wire-compatible text-only fixes)

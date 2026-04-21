@@ -16,7 +16,7 @@ import {
   type VerifyOutcome,
   type FallbackSink,
 } from 'tbac-core';
-import { extractToken } from '../meta/embed.js';
+import { extractTbacMeta } from '../meta/embed.js';
 
 export interface VerifierConfig {
   readonly rsIdentifier: string;
@@ -43,6 +43,13 @@ export interface VerificationRequest {
   readonly toolArguments?: Record<string, unknown>;
   /** Peer-advertised capability version (from the capability-negotiation handshake). */
   readonly peerVersion?: string;
+  /**
+   * Overrides the value inferred from `_meta[...].enc` presence. Useful when
+   * an upstream component (e.g. an edge proxy) terminates the confidential
+   * channel before the verifier runs, so the `enc` envelope is no longer on
+   * the wire but the request was in fact encrypted end-to-end.
+   */
+  readonly requestHasEncryption?: boolean;
 }
 
 export type VerificationResult =
@@ -67,8 +74,8 @@ export class TbacTokenVerifier {
   constructor(private readonly cfg: VerifierConfig) {}
 
   async verify(req: VerificationRequest): Promise<VerificationResult> {
-    const tokenBytes = extractToken(req.meta);
-    if (tokenBytes === null) {
+    const extracted = extractTbacMeta(req.meta);
+    if (extracted === null) {
       return failureEnvelope({
         ok: false,
         denial: {
@@ -79,8 +86,16 @@ export class TbacTokenVerifier {
       });
     }
     const now = (this.cfg.now ?? (() => Math.floor(Date.now() / 1000)))();
+    // `requestHasEncryption` is sourced from the on-wire `_meta[...].enc`
+    // presence bit; the §3.3 `require_channel_encryption` gate in the core
+    // cascade consumes it. Callers that terminate channel encryption before
+    // reaching this verifier can override via VerificationRequest.
+    const requestHasEncryption =
+      req.requestHasEncryption !== undefined
+        ? req.requestHasEncryption
+        : extracted.hasEncryption;
     const verifyInputs = {
-      token: tokenBytes,
+      token: extracted.token,
       now,
       expectedAud: this.cfg.expectedAud ?? this.cfg.rsIdentifier,
       rsIdentifier: this.cfg.rsIdentifier,
@@ -92,6 +107,7 @@ export class TbacTokenVerifier {
       replay: this.cfg.replay,
       templates: this.cfg.templates,
       acceptR39Tokens: this.cfg.acceptR39Tokens ?? true,
+      requestHasEncryption,
       ...(req.toolArguments !== undefined ? { toolArguments: req.toolArguments } : {}),
       ...(this.cfg.consumedLog !== undefined ? { consumedLog: this.cfg.consumedLog } : {}),
       ...(this.cfg.clockSkewSec !== undefined ? { clockSkewSec: this.cfg.clockSkewSec } : {}),
