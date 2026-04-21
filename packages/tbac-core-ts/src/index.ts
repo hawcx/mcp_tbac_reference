@@ -6,4 +6,5 @@ export * as scope from './scope/index.js';
 export * from './denial/codes.js';
 export * from './stores/interfaces.js';
 export * from './stores/memory.js';
-export { verifyToken, type VerifyInputs, type VerifyOutcome } from './cascade/verify.js';
+export { verifyToken, type VerifyInputs, type VerifyOutcome, type VerifyFailure } from './cascade/verify.js';
+export { mintToken, type MintInputs, type MintedToken } from './cascade/mint.js';
