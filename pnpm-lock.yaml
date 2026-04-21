@@ -26,6 +26,9 @@ importers:
       '@hawcx/tbac-core':
         specifier: workspace:*
         version: link:../tbac-core-ts
+      '@noble/hashes':
+        specifier: ^1.4.0
+        version: 1.8.0
     devDependencies:
       tsx:
         specifier: ^4.7.0

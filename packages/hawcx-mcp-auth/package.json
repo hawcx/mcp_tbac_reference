@@ -22,7 +22,8 @@
     "demo:widening": "tsx src/demo/delegation_widening_demo.ts"
   },
   "dependencies": {
-    "@hawcx/tbac-core": "workspace:*"
+    "@hawcx/tbac-core": "workspace:*",
+    "@noble/hashes": "^1.4.0"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
