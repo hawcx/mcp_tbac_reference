@@ -1,0 +1,32 @@
+{
+  "name": "hawcx-mcp-auth",
+  "version": "0.1.0",
+  "description": "MCP SDK integration for TBAC (SEP r40): AuthProvider, TokenVerifier (Express + Hono), capability negotiation.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "demo": "tsx src/demo/run-demo.ts",
+    "demo:widening": "tsx src/demo/delegation_widening_demo.ts"
+  },
+  "dependencies": {
+    "@hawcx/tbac-core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

@@ -1,0 +1,44 @@
+hx-mcp-tbac — Clean-room reference implementation of MCP TBAC (SEP r40)
+Copyright 2026 Hawcx Inc.
+
+This product includes software developed at Hawcx Inc.
+(https://hawcx.com/).
+
+Licensed under the Apache License, Version 2.0. See LICENSE for details.
+
+SPECIFICATION AUTHORITY
+-----------------------
+
+This repository is a clean-room TypeScript implementation of the MCP
+"Task-Based Access Control" (TBAC) Standards Enhancement Proposal, revision
+r40 (2026-04-20). The normative source of truth for protocol semantics is
+the file `spec/0000-tbac-task-based-access-control-r40.md` in this
+repository.
+
+PATENT NON-ASSERTION
+--------------------
+
+Hawcx Inc. has filed patent applications covering implementation techniques
+for signcryption constructions, TQS architecture optimizations, Assembler
+architecture, and bidirectional response encryption mechanisms (see the
+SEP r40 "Patent notice" section at the bottom of `spec/0000-tbac-task-
+based-access-control-r40.md`).
+
+The normative requirements of SEP r40 — the token format, privilege
+classifier schema, verification cascade interface, capability negotiation,
+and `_meta` transport — are described at the interface level and do not
+require the use of patented methods.
+
+Consistent with the SEP's own commitment, Hawcx Inc. commits to not
+asserting patent claims against implementations that conform solely to
+SEP r40's normative requirements. For patent-related inquiries, contact:
+legal@hawcx.com.
+
+CLEAN-ROOM BOUNDARY
+-------------------
+
+This implementation was built from the SEP r40 document alone. It does not
+incorporate, port, or reference any source code, type definitions, test
+vectors, or proprietary constants from Hawcx's HAAP (`haap-*`) codebase.
+Every domain-separation label in this repository uses the `tbac-*` prefix
+normative to SEP r40 §A.5 and §12.2.

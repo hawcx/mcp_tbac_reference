@@ -1,0 +1,26 @@
+name: Conformance vectors
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  regen-and-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vectors:regen
+      - name: Fail on vector drift
+        run: |
+          git diff --exit-code test-vectors/v1/expected.json \
+            || (echo "::error::test-vectors/v1/expected.json drifted — regenerate and commit."; exit 1)

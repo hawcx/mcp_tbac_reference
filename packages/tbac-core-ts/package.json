@@ -1,0 +1,35 @@
+{
+  "name": "@hawcx/tbac-core",
+  "version": "0.1.0",
+  "description": "MCP TBAC (SEP r40) core: wire format, crypto, 17-step cascade, §8.1 glob-subset attenuation.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "vectors:generate": "tsx test-vectors/generate.ts"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^0.5.0",
+    "@noble/curves": "^1.4.0",
+    "@noble/hashes": "^1.4.0"
+  },
+  "devDependencies": {
+    "fast-check": "^3.19.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0"
+  }
+}
