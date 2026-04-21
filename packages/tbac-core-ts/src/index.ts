@@ -14,7 +14,24 @@ export {
   hashToScalar,
   GROUP_ORDER,
 } from './crypto/schnorr.js';
-export { hkdfSha256, u8, u64be, concat, ZERO_SALT_32 } from './crypto/hkdf.js';
+export {
+  hkdfSha256,
+  u8,
+  u64be,
+  concat,
+  ZERO_SALT_32,
+  DOMAIN_TOKEN_ENC,
+  DOMAIN_TOKEN_SIGN,
+  DOMAIN_REQ_ENC,
+  DOMAIN_RESP_ENC,
+  DOMAIN_RESP_IV,
+  DOMAIN_PRIV_SIG,
+  DOMAIN_POP,
+  DOMAIN_SCHNORR_NONCE,
+  DOMAIN_REQ_AAD,
+  DOMAIN_RESP_AAD,
+  ALL_DOMAINS,
+} from './crypto/hkdf.js';
 export { hmacSha256, constantTimeEqual } from './crypto/hmac.js';
 export { canonicalizeScope, decanonicalizeScope } from './scope/canonical.js';
 export {
