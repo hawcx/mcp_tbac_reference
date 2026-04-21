@@ -16,8 +16,8 @@ If the vulnerability is in the SEP itself (protocol design bug), please also ope
 
 ## Out of scope
 
-- `spec/` document (upstream SEP authoring).
-- Any Hawcx proprietary code (HAAP) — this repo has no access to it.
+- `spec/` document (upstream SEP authoring — file bugs on the SEP itself in the extension repository once assigned).
+- Any proprietary TBAC implementation that is not this codebase.
 
 ## Known non-goals
 

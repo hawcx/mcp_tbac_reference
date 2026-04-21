@@ -1,11 +1,11 @@
-# hx-mcp-tbac
+# mcp-tbac-reference
 
-Clean-room TypeScript reference implementation of **MCP Task-Based Access Control (SEP r40)**.
-Apache 2.0 · Pre-review draft · Interoperable with any SEP r40-conformant peer.
+Reference implementation of the **MCP Task-Based Access Control extension (SEP r40)**.
+Apache 2.0 · Pre-review draft · TypeScript · Interoperable with any SEP r40-conformant peer.
 
 > **SEP version:** `2026-04-20-r40`
-> **Spec source:** [`spec/0000-tbac-task-based-access-control-r40.md`](spec/0000-tbac-task-based-access-control-r40.md) (the single normative input)
-> **Clean-room:** Built from the SEP alone; no code or constants from Hawcx's proprietary HAAP (`haap-*`) codebase.
+> **Spec source:** [`spec/0000-tbac-task-based-access-control-r40.md`](spec/0000-tbac-task-based-access-control-r40.md) (the single normative input to this implementation)
+> **IP posture:** Apache 2.0 throughout with SPDX headers on every source file; copyright and patent non-assertion documented in [`NOTICE`](NOTICE).
 
 TBAC binds each tool invocation to a **single-use, parameter-bound, cryptographically sealed authorization token**. Instead of session-scoped OAuth bearer tokens, every `tools/call` carries a token whose scope was authored by the policy component and sealed by the TQS at mint time, then verified by a 17-step cascade at the Resource Server. If an agent is compromised, the attacker inherits authorization for **one call** — not the session.
 
@@ -23,8 +23,8 @@ pnpm demo:widening       # r40 §8.1 delegation widening-attack — must fail cl
 
 | Package | Purpose |
 |---|---|
-| [`packages/tbac-core-ts`](packages/tbac-core-ts) — `tbac-core` | Wire format, crypto primitives, 17-step cascade, scope canonicalization, `§8.1` glob-subset attenuation, 11 denial codes, pluggable stores |
-| [`packages/tbac-mcp-auth`](packages/tbac-mcp-auth) — `tbac-mcp-auth` | MCP SDK integration: `TbacAuthProvider` (client), `TbacTokenVerifier` (server, Express + Hono), capability negotiation, stub TQS with mint-gate attenuation, two demos |
+| `tbac-core` — [`packages/tbac-core-ts`](packages/tbac-core-ts) | Wire format, crypto primitives, 17-step cascade, scope canonicalization, §8.1 glob-subset attenuation, 11 denial codes, pluggable stores |
+| `tbac-mcp-auth` — [`packages/tbac-mcp-auth`](packages/tbac-mcp-auth) | MCP SDK integration: `TbacAuthProvider` (client), `TbacTokenVerifier` (server, Express + Hono), capability negotiation, demo-only stub TQS with mint-gate attenuation, two demos |
 
 ## Documentation
 
@@ -36,7 +36,7 @@ pnpm demo:widening       # r40 §8.1 delegation widening-attack — must fail cl
 | Server author | [`docs/integration-guide.md`](docs/integration-guide.md) |
 | Security reviewer | [`docs/verification-cascade.md`](docs/verification-cascade.md), [`docs/resource-attenuation.md`](docs/resource-attenuation.md) |
 | SDK author | [`docs/capability-negotiation.md`](docs/capability-negotiation.md) |
-| Standards / boundaries | [`docs/relationship-to-haap.md`](docs/relationship-to-haap.md) |
+| HAAP alignment (SEP §12) | [`docs/haap-alignment-note.md`](docs/haap-alignment-note.md) |
 | Migration from r39 | [`R40_MIGRATION.md`](R40_MIGRATION.md) |
 | Everyone | [`docs/faq.md`](docs/faq.md) |
 
@@ -59,4 +59,4 @@ The `pnpm demo:widening` script is the ground-truth regression test: it fails cl
 
 ## License and patents
 
-Apache 2.0 throughout. See [`LICENSE`](LICENSE). The SEP's patent non-assertion commitment for normative-only implementations is copied into [`NOTICE`](NOTICE). Normative requirements are described at the interface level and do not require patented methods.
+Apache 2.0 throughout; see [`LICENSE`](LICENSE). The SEP author's patent non-assertion commitment for normative-only implementations is mirrored into [`NOTICE`](NOTICE). SEP r40 describes its normative requirements at the interface level so that conforming implementations do not need to use any specific patented method.
