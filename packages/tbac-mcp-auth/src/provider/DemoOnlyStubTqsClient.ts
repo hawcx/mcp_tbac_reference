@@ -9,16 +9,23 @@
 //   (3) give integrators a working minimal example of the `TqsClient`
 //       interface shape.
 //
-// DO NOT USE THIS IN PRODUCTION. It has:
-//   - no real X3DH session bootstrap
-//   - no CIBA, no intent verification, no PoP
-//   - a predictable counter-based `jti` (§3.0 requires 128-bit CSPRNG)
-//   - a predictable counter-based IV (§3.0 requires per-token unique IV)
-//   - Math.random() in the Schnorr nonce seed (§3.0.1 requires CSPRNG;
-//     nonce reuse leaks the signing key)
+// DO NOT USE THIS IN PRODUCTION. It lacks:
+//   - a real X3DH session bootstrap (session keys are injected by the caller
+//     rather than negotiated)
+//   - CIBA, intent verification, and PoP
+//   - token pre-minting / queueing, rate-limit budgets, and mint policy
+//     enforcement
+//   - destination-binding validation against `SetDestinationPolicy`
+//   - the Authenticator IPC channel and IPC type codes (§11.3)
+//   - zeroization of derived key material (MUST per §3.0.3 Step 8)
+//   - side-channel resistance (nonce-reuse audit, constant-time code paths)
 //
-// A production TQS MUST replace all four of those with CSPRNG output from
-// `crypto.getRandomValues` / `crypto.randomBytes` / platform equivalent.
+// The randomness primitives it DOES use — `jti`, `token_iv`, and the Schnorr
+// nonce seed — are all drawn from `node:crypto`'s `randomBytes`, which is
+// the platform CSPRNG. This satisfies §3.0 (128-bit CSPRNG `jti`), §3.0.1
+// (per-token unique IV), and §3.0.1 Step 6(a) (randomized Schnorr nonce).
+// A test-only `_testRandom` hook is provided for deterministic fixtures;
+// production implementations of `TqsClient` MUST NOT expose such a hook.
 
 import {
   checkAttenuation,
