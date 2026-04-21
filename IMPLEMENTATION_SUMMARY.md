@@ -16,8 +16,8 @@ A clean-room TypeScript reference implementation of MCP Task-Based Access Contro
 | Coverage | ≥96% lines/statements on core; `glob.ts` and `attenuation.ts` at 100% branch |
 | Conformance vectors | Byte-identical regeneration; CI diff guard |
 | `aud_hash` for §A.5.1 inputs | `e4b259de5352880ebf7d058d3ce2787a7d7b68ec9fc71e94d8b2f8ae98298e3a` — matches §A.5.4 exactly |
-| Clean-room guard | Three rounds of audit, no code-copy findings |
-| Audit iterations | 3 rounds of security/conformance audit, all findings resolved (see [`audit-history/`](audit-history/)) |
+| Clean-room guard | Multiple rounds of audit, no code-copy findings |
+| Audit iterations | Multiple rounds of security/conformance audit; all code-level findings (H1–H4 + M5 from the r41 audit) are resolved and regression-tested. Remaining reviewer notes are clean-room presentation/provenance choices documented in [`SECURITY.md#clean-room-posture-for-strict-provenance-reviewers`](SECURITY.md), not open defects. Early rounds archived under [`audit-history/`](audit-history/). |
 
 ## Package layout
 
