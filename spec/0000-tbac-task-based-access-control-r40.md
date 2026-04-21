@@ -1444,7 +1444,7 @@ A reference implementation is available at:
 
 ### MCP SDK Integration (Planned)
 
-A TypeScript package (`hawcx-mcp-auth`) providing:
+A TypeScript package (`tbac-mcp-auth`) providing:
 - `TbacAuthProvider` implementing the MCP SDK `AuthProvider` interface
 - `TbacTokenVerifier` middleware for MCP servers
 - TQS client for local token acquisition
