@@ -9,9 +9,9 @@ import {
   canonicalizeScope,
   scalarMulBase,
   verifyToken,
-} from '@hawcx/tbac-core';
+} from 'tbac-core';
 import { DemoOnlyStubTqsClient, InvocationRejected } from './DemoOnlyStubTqsClient.js';
-import type { ScopeJson } from '@hawcx/tbac-core';
+import type { ScopeJson } from 'tbac-core';
 
 function makeTqs() {
   const K_session = new Uint8Array(32).fill(0x42);

@@ -11,7 +11,7 @@ child:  resource = "*"
 
 The child's pattern (a single-segment wildcard matching every top-level segment) is strictly broader than the parent's. A naive implementation that read absence-as-wildcard (r39) or that only checked attenuation at one site could let the child through.
 
-**r40 requires rejection at BOTH sites.** The reference implementation demonstrates this via [`pnpm demo:widening`](../packages/hawcx-mcp-auth/src/demo/delegation_widening_demo.ts):
+**r40 requires rejection at BOTH sites.** The reference implementation demonstrates this via [`pnpm demo:widening`](../packages/tbac-mcp-auth/src/demo/delegation_widening_demo.ts):
 
 ```
 [widening-demo] TBAC §8.1 defense-in-depth (SEP 2026-04-20-r40)

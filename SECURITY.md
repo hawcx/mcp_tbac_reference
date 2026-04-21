@@ -10,7 +10,7 @@ If the vulnerability is in the SEP itself (protocol design bug), please also ope
 
 ## Scope
 
-- Clean-room library code: `packages/tbac-core-ts`, `packages/hawcx-mcp-auth`.
+- Clean-room library code: `packages/tbac-core-ts`, `packages/tbac-mcp-auth`.
 - Test vectors in `test-vectors/v1/`.
 - CI workflows, guard scripts.
 

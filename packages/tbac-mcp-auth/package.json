@@ -1,5 +1,5 @@
 {
-  "name": "hawcx-mcp-auth",
+  "name": "tbac-mcp-auth",
   "version": "0.1.0",
   "description": "MCP SDK integration for TBAC (SEP r40): AuthProvider, TokenVerifier (Express + Hono), capability negotiation.",
   "license": "Apache-2.0",
@@ -22,7 +22,7 @@
     "demo:widening": "tsx src/demo/delegation_widening_demo.ts"
   },
   "dependencies": {
-    "@hawcx/tbac-core": "workspace:*",
+    "tbac-core": "workspace:*",
     "@noble/hashes": "^1.4.0"
   },
   "devDependencies": {

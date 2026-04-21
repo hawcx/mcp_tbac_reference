@@ -1,5 +1,5 @@
 {
-  "name": "@hawcx/tbac-core",
+  "name": "tbac-core",
   "version": "0.1.0",
   "description": "MCP TBAC (SEP r40) core: wire format, crypto, 17-step cascade, §8.1 glob-subset attenuation.",
   "license": "Apache-2.0",

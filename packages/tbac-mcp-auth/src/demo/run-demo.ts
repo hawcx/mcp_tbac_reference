@@ -13,7 +13,7 @@ import {
   MemorySessionStore,
   SEP_VERSION,
   scalarMulBase,
-} from '@hawcx/tbac-core';
+} from 'tbac-core';
 import { DemoOnlyStubTqsClient } from '../provider/DemoOnlyStubTqsClient.js';
 import { TbacAuthProvider } from '../provider/TbacAuthProvider.js';
 import { TbacTokenVerifier } from '../verifier/TbacTokenVerifier.js';

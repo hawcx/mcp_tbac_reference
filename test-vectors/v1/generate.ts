@@ -27,7 +27,7 @@ import {
   u64be,
   u8,
   type ScopeJson,
-} from '@hawcx/tbac-core';
+} from 'tbac-core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const INPUTS = JSON.parse(readFileSync(resolve(__dirname, 'inputs.json'), 'utf8'));

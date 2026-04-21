@@ -1,4 +1,4 @@
-# hawcx-mcp-auth
+# tbac-mcp-auth
 
 MCP SDK integration for TBAC (SEP r40). Provides:
 

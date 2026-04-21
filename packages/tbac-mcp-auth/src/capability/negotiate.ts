@@ -6,7 +6,7 @@
 // mechanism is honored per §2.2 for SDKs that do not yet expose the
 // `capabilities.extensions` mechanism.
 
-import { EXTENSION_KEY, R39_VERSION, SEP_VERSION } from '@hawcx/tbac-core';
+import { EXTENSION_KEY, R39_VERSION, SEP_VERSION } from 'tbac-core';
 
 export interface PeerCapability {
   readonly version: string;

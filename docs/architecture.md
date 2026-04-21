@@ -61,7 +61,7 @@ Steps 10 and 15 split replay into reserve/commit. Step 10 is a non-destructive `
 
 Delegation attenuation runs at two independent sites:
 
-1. **TQS mint-gate** — the stub TQS ([`TqsClient.ts`](../packages/hawcx-mcp-auth/src/provider/TqsClient.ts)) calls `checkAttenuation(child, parent, 'mint')` before issuing any delegated token.
+1. **TQS mint-gate** — the stub TQS ([`TqsClient.ts`](../packages/tbac-mcp-auth/src/provider/TqsClient.ts)) calls `checkAttenuation(child, parent, 'mint')` before issuing any delegated token.
 2. **RS cascade Step 13** — the reference cascade ([`verify.ts`](../packages/tbac-core-ts/src/cascade/verify.ts)) calls `checkAttenuation(child, parent, 'rs')` against the parent scope fetched from the consumed-token log.
 
 Both must reject independently. A single layer is not enough — `pnpm demo:widening` proves both layers fire.

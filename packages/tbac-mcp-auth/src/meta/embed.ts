@@ -4,7 +4,7 @@
 // SEP §10.1. The raw token bytes are base64url-encoded for transport in
 // JSON-RPC.
 
-import { EXTENSION_KEY } from '@hawcx/tbac-core';
+import { EXTENSION_KEY } from 'tbac-core';
 
 export interface TbacMetaFields {
   readonly token: string; // base64url(opaque-token)

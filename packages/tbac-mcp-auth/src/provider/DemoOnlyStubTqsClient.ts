@@ -5,7 +5,7 @@
 // This class is explicitly NOT a production TQS. It exists to:
 //   (1) make `pnpm demo` runnable end-to-end,
 //   (2) exercise the §8.1 mint-gate attenuation check (which IS normative and
-//       lives in @hawcx/tbac-core — this class only calls it),
+//       lives in tbac-core — this class only calls it),
 //   (3) give integrators a working minimal example of the `TqsClient`
 //       interface shape.
 //
@@ -26,7 +26,7 @@ import {
   scalarMulBase,
   type ScopeJson,
   type MintedToken,
-} from '@hawcx/tbac-core';
+} from 'tbac-core';
 import { sha256 } from '@noble/hashes/sha2';
 
 export interface DequeueArgs {

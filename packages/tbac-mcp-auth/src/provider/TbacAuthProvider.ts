@@ -5,7 +5,7 @@
 // minimal wire adapter — the real heavy lifting is in the TQS. The provider
 // has no crypto material of its own.
 
-import { SEP_VERSION } from '@hawcx/tbac-core';
+import { SEP_VERSION } from 'tbac-core';
 import { embedToken } from '../meta/embed.js';
 import type { TqsClient, DequeueArgs } from './DemoOnlyStubTqsClient.js';
 

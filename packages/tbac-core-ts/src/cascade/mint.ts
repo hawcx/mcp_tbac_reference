@@ -3,7 +3,7 @@
 // Test/demo-only token minting helper. Production TQS paths live elsewhere.
 // This is normative in the following narrow sense: the §8.1 delegation
 // attenuation check at mint-time MUST reject a widening child. That check
-// is invoked by the caller (stub TQS in hawcx-mcp-auth) — this helper only
+// is invoked by the caller (stub TQS in tbac-mcp-auth) — this helper only
 // performs the cryptographic assembly.
 
 import { sha256 } from '@noble/hashes/sha2';

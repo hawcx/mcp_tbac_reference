@@ -15,7 +15,7 @@ Per §2.1, "Implementations MUST use **exact string matching** for version recog
 ## Server advertisement
 
 ```ts
-import { buildServerCapability } from 'hawcx-mcp-auth';
+import { buildServerCapability } from 'tbac-mcp-auth';
 
 const capability = buildServerCapability({
   deploymentProfile: 'E',
@@ -28,7 +28,7 @@ const capability = buildServerCapability({
 ## Client advertisement
 
 ```ts
-import { buildClientCapability } from 'hawcx-mcp-auth';
+import { buildClientCapability } from 'tbac-mcp-auth';
 
 const capability = buildClientCapability({ deploymentProfile: 'E', hasTqs: true });
 ```
@@ -36,7 +36,7 @@ const capability = buildClientCapability({ deploymentProfile: 'E', hasTqs: true 
 ## Peer inspection
 
 ```ts
-import { negotiatePeer } from 'hawcx-mcp-auth';
+import { negotiatePeer } from 'tbac-mcp-auth';
 
 const r = negotiatePeer(incomingInitResponse);
 if (!r.enabled) {

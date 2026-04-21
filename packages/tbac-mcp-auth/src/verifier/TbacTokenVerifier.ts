@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Server-side cascade orchestration. Wraps @hawcx/tbac-core's verifyToken
+// Server-side cascade orchestration. Wraps tbac-core's verifyToken
 // with an MCP-flavoured API: extracts the token from `_meta`, runs the
 // cascade, and returns either a structured denial envelope or a success
 // with `req.tbacScope` attached.
@@ -15,7 +15,7 @@ import {
   type VerifyFailure,
   type VerifyOutcome,
   type FallbackSink,
-} from '@hawcx/tbac-core';
+} from 'tbac-core';
 import { extractToken } from '../meta/embed.js';
 
 export interface VerifierConfig {

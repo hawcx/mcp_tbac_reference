@@ -5,7 +5,7 @@ You already have an MCP server. This guide shows how to add `TbacTokenVerifier` 
 ## Install
 
 ```bash
-pnpm add hawcx-mcp-auth @hawcx/tbac-core
+pnpm add tbac-mcp-auth tbac-core
 ```
 
 ## Wire up stores
@@ -18,7 +18,7 @@ import {
   MemoryPolicyTemplateStore,
   MemoryReplayStore,
   MemorySessionStore,
-} from '@hawcx/tbac-core';
+} from 'tbac-core';
 
 const sessions = new MemorySessionStore();
 const replay = new MemoryReplayStore();
@@ -31,7 +31,7 @@ Provision each session from your Authenticator's X3DH handshake (out of band). P
 ## Create the verifier
 
 ```ts
-import { TbacTokenVerifier, buildServerCapability } from 'hawcx-mcp-auth';
+import { TbacTokenVerifier, buildServerCapability } from 'tbac-mcp-auth';
 
 const verifier = new TbacTokenVerifier({
   rsIdentifier: 'https://rs.example.com/mcp',
@@ -79,7 +79,7 @@ The `acceptR39Tokens` flag (default `true`) lets you accept r39-format tokens (w
 ## Hono adapter
 
 ```ts
-import { tbacHono } from 'hawcx-mcp-auth';
+import { tbacHono } from 'tbac-mcp-auth';
 
 app.post('/mcp',
   tbacHono(verifier, {
@@ -94,7 +94,7 @@ app.post('/mcp',
 ## Express adapter
 
 ```ts
-import { tbacExpress } from 'hawcx-mcp-auth';
+import { tbacExpress } from 'tbac-mcp-auth';
 
 app.post('/mcp',
   tbacExpress(verifier, {

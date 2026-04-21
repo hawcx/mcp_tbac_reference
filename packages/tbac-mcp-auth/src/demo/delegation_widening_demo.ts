@@ -21,7 +21,7 @@ import {
   scalarMulBase,
   verifyToken,
   type ScopeJson,
-} from '@hawcx/tbac-core';
+} from 'tbac-core';
 import { DemoOnlyStubTqsClient, InvocationRejected } from '../provider/DemoOnlyStubTqsClient.js';
 
 async function main(): Promise<number> {

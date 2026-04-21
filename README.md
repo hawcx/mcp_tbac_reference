@@ -23,8 +23,8 @@ pnpm demo:widening       # r40 §8.1 delegation widening-attack — must fail cl
 
 | Package | Purpose |
 |---|---|
-| [`packages/tbac-core-ts`](packages/tbac-core-ts) — `@hawcx/tbac-core` | Wire format, crypto primitives, 17-step cascade, scope canonicalization, `§8.1` glob-subset attenuation, 11 denial codes, pluggable stores |
-| [`packages/hawcx-mcp-auth`](packages/hawcx-mcp-auth) — `hawcx-mcp-auth` | MCP SDK integration: `TbacAuthProvider` (client), `TbacTokenVerifier` (server, Express + Hono), capability negotiation, stub TQS with mint-gate attenuation, two demos |
+| [`packages/tbac-core-ts`](packages/tbac-core-ts) — `tbac-core` | Wire format, crypto primitives, 17-step cascade, scope canonicalization, `§8.1` glob-subset attenuation, 11 denial codes, pluggable stores |
+| [`packages/tbac-mcp-auth`](packages/tbac-mcp-auth) — `tbac-mcp-auth` | MCP SDK integration: `TbacAuthProvider` (client), `TbacTokenVerifier` (server, Express + Hono), capability negotiation, stub TQS with mint-gate attenuation, two demos |
 
 ## Documentation
 

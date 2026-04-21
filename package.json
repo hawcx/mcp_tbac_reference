@@ -1,5 +1,5 @@
 {
-  "name": "hx-mcp-tbac",
+  "name": "mcp-tbac-reference",
   "private": true,
   "version": "0.0.0",
   "description": "Clean-room reference implementation of MCP TBAC (SEP r40).",
@@ -10,9 +10,9 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "demo": "pnpm --filter hawcx-mcp-auth run demo",
-    "demo:widening": "pnpm --filter hawcx-mcp-auth run demo:widening",
-    "vectors:regen": "pnpm --filter @hawcx/tbac-core run vectors:generate",
+    "demo": "pnpm --filter tbac-mcp-auth run demo",
+    "demo:widening": "pnpm --filter tbac-mcp-auth run demo:widening",
+    "vectors:regen": "pnpm --filter tbac-core run vectors:generate",
     "guard:no-haap": "bash scripts/no-haap-prefix.sh"
   },
   "devDependencies": {
