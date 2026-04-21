@@ -96,6 +96,7 @@ describe('verify-then-decrypt ordering (§4.3)', () => {
       expectedAud: AUD,
       rsIdentifier: AUD,
       rsCurrentEpoch: EPOCH,
+      requestedTool: 't',
       requestedAction: 'read',
       requestedResource: '*',
       ...stores(),

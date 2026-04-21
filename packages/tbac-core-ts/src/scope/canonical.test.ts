@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import { canonicalizeScope, decanonicalizeScope } from './canonical.js';
+import { encodeTlv } from '../wire/tlv.js';
 import type { ScopeJson } from './schema.js';
 
 function base(overrides: Partial<ScopeJson> = {}): ScopeJson {
@@ -19,6 +20,79 @@ function base(overrides: Partial<ScopeJson> = {}): ScopeJson {
     ...overrides,
   };
 }
+
+describe('scope canonicalization — §3.3 unknown-constraint-tag rejection', () => {
+  it('canonicalize throws on unknown normative constraint key', () => {
+    expect(() =>
+      canonicalizeScope(
+        base({
+          constraints: { max_rows: 10, bogus_field: 42 } as never,
+        }),
+      ),
+    ).toThrow(/bogus_field/);
+  });
+
+  it('canonicalize permits x-prefixed vendor extension keys at mint time', () => {
+    expect(() =>
+      canonicalizeScope(
+        base({
+          constraints: { max_rows: 10, 'x-audit-tag': 'foo' } as never,
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('decanonicalize throws on unknown normative-range tag (0x07-0x7F)', () => {
+    // Hand-craft a constraint TLV with tag 0x07 (unknown, normative range).
+    // Framing: [outer scope TLV ... constraints field tag 0x07 pointing to
+    // inner TLV { tag 0x07, length 1, value 0x01 }].
+    // Easier: just construct a minimal scope TLV and then tack on the
+    // unknown constraint tag by decanonicalizing the constraint sub-TLV
+    // directly.
+    const badConstraintTlv = new Uint8Array([0x07, 0x01, 0xff]); // tag 0x07, len 1, val 0xff
+    // We can't easily invoke decanonicalizeConstraints without going through
+    // decanonicalizeScope. Construct a scope TLV whose constraint sub-field
+    // carries the bad tag.
+    const utf8 = new TextEncoder();
+    const scopeTlvBytes = encodeTlv([
+      { tag: 0x01, value: utf8.encode('iss') }, // iss
+      { tag: 0x02, value: utf8.encode('IK') }, // sub
+      { tag: 0x03, value: utf8.encode('agent') }, // agent_instance_id
+      { tag: 0x04, value: utf8.encode('tool') }, // tool
+      { tag: 0x05, value: utf8.encode('read') }, // action
+      { tag: 0x06, value: utf8.encode('*') }, // resource
+      { tag: 0x07, value: badConstraintTlv }, // constraints w/ unknown inner tag
+      { tag: 0x08, value: new Uint8Array(8) }, // delegation_depth = 0
+      { tag: 0x0a, value: new Uint8Array([0x00]) }, // require_pop = false
+      { tag: 0x0b, value: utf8.encode('aud') }, // aud
+      { tag: 0x0c, value: utf8.encode('org') }, // org_id
+      { tag: 0x0d, value: new Uint8Array(8) }, // trust_level = 0
+      { tag: 0x0e, value: new Uint8Array(8) }, // human_confirmed_at = 0
+    ]);
+    expect(() => decanonicalizeScope(scopeTlvBytes)).toThrow(/unknown constraint TLV tag/);
+  });
+
+  it('decanonicalize ignores unknown vendor-range tag (0x80+)', () => {
+    const vendorConstraintTlv = new Uint8Array([0x80, 0x01, 0xff]); // tag 0x80, len 1, val 0xff
+    const utf8 = new TextEncoder();
+    const scopeTlvBytes = encodeTlv([
+      { tag: 0x01, value: utf8.encode('iss') },
+      { tag: 0x02, value: utf8.encode('IK') },
+      { tag: 0x03, value: utf8.encode('agent') },
+      { tag: 0x04, value: utf8.encode('tool') },
+      { tag: 0x05, value: utf8.encode('read') },
+      { tag: 0x06, value: utf8.encode('*') },
+      { tag: 0x07, value: vendorConstraintTlv },
+      { tag: 0x08, value: new Uint8Array(8) },
+      { tag: 0x0a, value: new Uint8Array([0x00]) },
+      { tag: 0x0b, value: utf8.encode('aud') },
+      { tag: 0x0c, value: utf8.encode('org') },
+      { tag: 0x0d, value: new Uint8Array(8) },
+      { tag: 0x0e, value: new Uint8Array(8) },
+    ]);
+    expect(() => decanonicalizeScope(scopeTlvBytes)).not.toThrow();
+  });
+});
 
 describe('scope canonicalization — allowed_parameters (§A.3.1)', () => {
   it('round-trips a simple allowed_parameters map', () => {

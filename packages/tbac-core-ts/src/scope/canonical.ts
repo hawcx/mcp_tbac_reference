@@ -121,7 +121,26 @@ export function canonicalizeScope(scope: ScopeJson): Uint8Array {
   return encodeTlv(fields);
 }
 
+const KNOWN_CONSTRAINT_KEY_NAMES = new Set<string>([
+  'max_rows',
+  'max_calls',
+  'time_window_sec',
+  'require_channel_encryption',
+  'data_classification',
+  'allowed_parameters',
+]);
+
 function canonicalizeConstraints(c: Constraints): Uint8Array {
+  // §3.3: Unknown constraint fields MUST cause rejection unless `x-`-prefixed.
+  // Enforced at mint time so a well-behaved TQS cannot accidentally emit
+  // a token with an unknown constraint key.
+  for (const k of Object.keys(c)) {
+    if (!KNOWN_CONSTRAINT_KEY_NAMES.has(k) && !k.startsWith('x-')) {
+      throw new Error(
+        `unknown constraint field "${k}" — MUST be prefixed with "x-" for vendor extensions (§3.3)`,
+      );
+    }
+  }
   const f: TlvField[] = [];
   if (typeof c.max_rows === 'number') f.push({ tag: CONSTRAINT_TAGS.max_rows, value: u64be(c.max_rows) });
   if (typeof c.max_calls === 'number') f.push({ tag: CONSTRAINT_TAGS.max_calls, value: u64be(c.max_calls) });
@@ -321,7 +340,27 @@ export function decanonicalizeScope(tlv: Uint8Array): ScopeJson {
 function decanonicalizeConstraints(b: Uint8Array): Constraints {
   const fields = decodeTlv(b);
   const by = new Map<number, Uint8Array>();
-  for (const f of fields) by.set(f.tag, f.value);
+  for (const f of fields) {
+    // §3.3 defense-in-depth: reject unknown normative-range constraint tags
+    // (0x07-0x7F). Vendor tags (0x80+) are treated as advisory per §A.1.
+    const known =
+      f.tag === CONSTRAINT_TAGS.max_rows ||
+      f.tag === CONSTRAINT_TAGS.max_calls ||
+      f.tag === CONSTRAINT_TAGS.time_window_sec ||
+      f.tag === CONSTRAINT_TAGS.require_channel_encryption ||
+      f.tag === CONSTRAINT_TAGS.data_classification ||
+      f.tag === CONSTRAINT_TAGS.allowed_parameters;
+    if (!known) {
+      if (f.tag < 0x80) {
+        throw new Error(
+          `unknown constraint TLV tag 0x${f.tag.toString(16).padStart(2, '0')} in normative range — MUST be rejected per §3.3`,
+        );
+      }
+      // Vendor tag — skip (advisory).
+      continue;
+    }
+    by.set(f.tag, f.value);
+  }
   const getU = (tag: number): number | undefined => {
     const v = by.get(tag);
     if (v === undefined) return undefined;

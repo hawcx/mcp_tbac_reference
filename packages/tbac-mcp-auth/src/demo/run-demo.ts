@@ -88,6 +88,7 @@ async function main(): Promise<number> {
   });
   const happy = await verifier.verify({
     meta: (attached1.request.params as Record<string, unknown>)?.['_meta'],
+    requestedTool: 'query_database',
     requestedAction: 'read',
     requestedResource: 'billing-api/invoices',
   });
@@ -110,6 +111,7 @@ async function main(): Promise<number> {
   });
   const denied = await verifier.verify({
     meta: (attached2.request.params as Record<string, unknown>)?.['_meta'],
+    requestedTool: 'query_database',
     requestedAction: 'read',
     requestedResource: 'billing-api/invoices', // outside scope
   });
@@ -124,6 +126,7 @@ async function main(): Promise<number> {
   // --- Case 3: replay denial — submit the same token twice
   const replayed = await verifier.verify({
     meta: (attached1.request.params as Record<string, unknown>)?.['_meta'],
+    requestedTool: 'query_database',
     requestedAction: 'read',
     requestedResource: 'billing-api/invoices',
   });

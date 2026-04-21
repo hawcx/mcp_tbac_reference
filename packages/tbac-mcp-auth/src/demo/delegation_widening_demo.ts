@@ -154,6 +154,7 @@ async function main(): Promise<number> {
     expectedAud: RS_URL,
     rsIdentifier: RS_URL,
     rsCurrentEpoch: policy_epoch,
+    requestedTool: 'query_database',
     requestedAction: 'read',
     // Pick a single-segment resource that falls within child `*` but
     // OUTSIDE parent `public/*` — this forces the cascade to run

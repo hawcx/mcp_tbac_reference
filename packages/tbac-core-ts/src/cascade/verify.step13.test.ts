@@ -103,12 +103,117 @@ function mintAndVerify(
     expectedAud: AUD,
     rsIdentifier: AUD,
     rsCurrentEpoch: EPOCH,
+    requestedTool: scope.tool,
     requestedAction: 'read',
     requestedResource: 'billing/invoices',
     ...stores,
     ...extra,
   });
 }
+
+describe('Step 13 — requestedTool binding', () => {
+  const tpl: PolicyTemplate = {
+    currentEpoch: EPOCH,
+    ceiling: { allowed_actions: ['read'] },
+  };
+
+  it('denies when scope.tool ≠ requestedTool (token presented against wrong tool)', async () => {
+    // Mint a token scoped to query_database; the RS pretends to execute `delete_all`.
+    const scope = baseScope({ tool: 'query_database' });
+    const minted = mintToken({
+      K_session,
+      verifier_secret: VS,
+      mutual_auth: MA,
+      SEK_PK,
+      session_id: SESSION_ID,
+      policy_epoch: EPOCH,
+      iat: IAT,
+      exp: EXP,
+      token_iv: TOKEN_IV,
+      jti: JTI,
+      scope,
+      response_key: RK,
+      rTokSeed: freshRTokSeed('wrong-tool'),
+    });
+    const stores = makeStoresFor(scope, tpl);
+    const r = await verifyToken({
+      token: minted.token,
+      now: IAT + 5,
+      expectedAud: AUD,
+      rsIdentifier: AUD,
+      rsCurrentEpoch: EPOCH,
+      requestedTool: 'delete_all', // RS intends to call a DIFFERENT tool
+      requestedAction: 'read',
+      requestedResource: 'billing/invoices',
+      ...stores,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.denial.code).toBe('INSUFFICIENT_PRIVILEGE');
+      expect(r.denial.failedCheck).toBe('TBAC_SCOPE_EVALUATION');
+      expect(r.denial.message).toMatch(/requestedTool/);
+    }
+  });
+
+  it('accepts when scope.tool === requestedTool', async () => {
+    const scope = baseScope({ tool: 'query_database' });
+    const minted = mintToken({
+      K_session,
+      verifier_secret: VS,
+      mutual_auth: MA,
+      SEK_PK,
+      session_id: SESSION_ID,
+      policy_epoch: EPOCH,
+      iat: IAT,
+      exp: EXP,
+      token_iv: TOKEN_IV,
+      jti: JTI,
+      scope,
+      response_key: RK,
+      rTokSeed: freshRTokSeed('match-tool'),
+    });
+    const stores = makeStoresFor(scope, tpl);
+    const r = await verifyToken({
+      token: minted.token,
+      now: IAT + 5,
+      expectedAud: AUD,
+      rsIdentifier: AUD,
+      rsCurrentEpoch: EPOCH,
+      requestedTool: 'query_database',
+      requestedAction: 'read',
+      requestedResource: 'billing/invoices',
+      ...stores,
+    });
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe('§3.3 unknown-constraint-key rejection', () => {
+  it('mint-side: canonicalizeConstraints throws on unknown non-x- key', () => {
+    expect(() =>
+      mintAndVerify(
+        baseScope({
+          constraints: { max_rows: 10, surprise_feature: true } as never,
+        }),
+        { currentEpoch: EPOCH, ceiling: { allowed_actions: ['read'] } },
+      ),
+    ).toThrow(/surprise_feature/);
+  });
+
+  it('mint-side: x--prefixed vendor extension is accepted at mint but absent from wire', async () => {
+    // Vendor extension keys are silently stripped during canonicalization
+    // (the wire format has no tag allocation for them), but the scope-level
+    // validator does NOT reject them. So the mint succeeds and the token
+    // verifies — this is the intended §3.3 semantic for `x-` prefixes.
+    const r = await mintAndVerify(
+      baseScope({
+        constraints: { max_rows: 10, 'x-trace-id': 'abc123' } as never,
+      }),
+      { currentEpoch: EPOCH, ceiling: { allowed_actions: ['read'] } },
+    );
+    expect(r.ok).toBe(true);
+  });
+});
 
 describe('Step 13 — template ceiling enforcement', () => {
   it('denies when scope trust_level below template min_trust_level', async () => {

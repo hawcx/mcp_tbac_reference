@@ -155,6 +155,7 @@ describe('DemoOnlyStubTqsClient', () => {
       expectedAud: 'https://rs.example.com/mcp',
       rsIdentifier: 'https://rs.example.com/mcp',
       rsCurrentEpoch: 1n,
+      requestedTool: 'query_database',
       requestedAction: 'read',
       requestedResource: 'billing/invoices',
       sessions,

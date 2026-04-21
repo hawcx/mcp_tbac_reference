@@ -61,6 +61,13 @@ export interface VerifyInputs {
   /** The RS's own identifier, compared byte-exact to scope.aud after decryption. */
   readonly rsIdentifier: string;
   readonly rsCurrentEpoch: bigint;
+  /**
+   * The MCP tool the RS is about to execute (i.e. `tools/call` `name`). The
+   * cascade enforces byte-equality against `scope.tool` at Step 13 — a token
+   * scoped to one tool MUST NOT authorize another, even if action/resource
+   * happen to coincide. See SEP §3.2 and §4.3 Step 13.
+   */
+  readonly requestedTool: string;
   readonly requestedAction: string;
   readonly requestedResource: string;
   /**
@@ -235,6 +242,16 @@ export async function verifyToken(inp: VerifyInputs): Promise<VerifyOutcome | Ve
     return fail(DENIAL_CODES.AUD_MISMATCH, FAILED_CHECKS.AUDIENCE_VALIDATION, 'aud post-decrypt mismatch');
   if (scopeJson.org_id !== session.org_id)
     return fail(DENIAL_CODES.ORG_ID_MISMATCH, FAILED_CHECKS.ORG_ID_VALIDATION);
+  // Tool-binding check: the token's `scope.tool` MUST match the tool the RS
+  // is about to invoke. Without this, a token scoped to tool X could
+  // authorize tool Y whenever action/resource happen to coincide.
+  if (scopeJson.tool !== inp.requestedTool) {
+    return fail(
+      DENIAL_CODES.INSUFFICIENT_PRIVILEGE,
+      FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+      `scope.tool "${scopeJson.tool}" does not match requestedTool "${inp.requestedTool}"`,
+    );
+  }
 
   const tpl = await inp.templates.getTemplate(scopeJson.agent_instance_id, scopeJson.tool);
   if (tpl === null)

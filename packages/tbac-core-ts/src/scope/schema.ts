@@ -43,6 +43,16 @@ export interface ScopeJson {
 /** Header fields that MUST NOT appear in scope JSON (§3.2). */
 export const RESERVED_HEADER_FIELDS = ['jti', 'aud_hash', 'iat', 'exp', 'policy_epoch'] as const;
 
+/** §A.3 constraint field names known to this implementation. */
+export const KNOWN_CONSTRAINT_KEYS: ReadonlySet<string> = new Set([
+  'max_rows',
+  'max_calls',
+  'time_window_sec',
+  'require_channel_encryption',
+  'data_classification',
+  'allowed_parameters',
+]);
+
 export interface ValidateOptions {
   /**
    * Peer-advertised capability version. When set to the literal r39 value,
@@ -281,6 +291,23 @@ export function validateScope(
           'txn_id MUST be 32 lowercase hex chars (16-byte CSPRNG value, §3.2)',
         ),
       };
+    }
+  }
+
+  // §3.3: Unknown constraint fields MUST cause rejection unless `x-`-prefixed.
+  if (typeof obj['constraints'] === 'object' && obj['constraints'] !== null) {
+    const cns = obj['constraints'] as Record<string, unknown>;
+    for (const k of Object.keys(cns)) {
+      if (!KNOWN_CONSTRAINT_KEYS.has(k) && !k.startsWith('x-')) {
+        return {
+          ok: false,
+          denial: denial(
+            DENIAL_CODES.MALFORMED_TOKEN,
+            FAILED_CHECKS.TBAC_SCOPE_EVALUATION,
+            `unknown constraint field "${k}" — MUST be prefixed with "x-" for vendor extensions (§3.3)`,
+          ),
+        };
+      }
     }
   }
 

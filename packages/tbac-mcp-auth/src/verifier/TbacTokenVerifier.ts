@@ -35,8 +35,12 @@ export interface VerifierConfig {
 
 export interface VerificationRequest {
   readonly meta: unknown;
+  /** The MCP tool name the RS is about to execute (i.e. `tools/call` `name`). */
+  readonly requestedTool: string;
   readonly requestedAction: string;
   readonly requestedResource: string;
+  /** Decrypted tool arguments, used for §3.3 `allowed_parameters` enforcement. */
+  readonly toolArguments?: Record<string, unknown>;
   /** Peer-advertised capability version (from the capability-negotiation handshake). */
   readonly peerVersion?: string;
 }
@@ -81,12 +85,14 @@ export class TbacTokenVerifier {
       expectedAud: this.cfg.expectedAud ?? this.cfg.rsIdentifier,
       rsIdentifier: this.cfg.rsIdentifier,
       rsCurrentEpoch: this.cfg.rsCurrentEpoch,
+      requestedTool: req.requestedTool,
       requestedAction: req.requestedAction,
       requestedResource: req.requestedResource,
       sessions: this.cfg.sessions,
       replay: this.cfg.replay,
       templates: this.cfg.templates,
       acceptR39Tokens: this.cfg.acceptR39Tokens ?? true,
+      ...(req.toolArguments !== undefined ? { toolArguments: req.toolArguments } : {}),
       ...(this.cfg.consumedLog !== undefined ? { consumedLog: this.cfg.consumedLog } : {}),
       ...(this.cfg.clockSkewSec !== undefined ? { clockSkewSec: this.cfg.clockSkewSec } : {}),
       ...(req.peerVersion !== undefined ? { peerVersion: req.peerVersion } : {}),

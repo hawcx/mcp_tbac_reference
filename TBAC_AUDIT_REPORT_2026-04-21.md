@@ -20,23 +20,24 @@ I did not find direct evidence of proprietary source-code contamination. The rep
 
 I did find several material implementation gaps:
 
-1. The verifier does not enforce most `constraints` or several policy-template ceilings at authorization time.
+1. The verifier does not bind authorization to the actual requested tool, and it does not enforce most `constraints` or several policy-template ceilings at authorization time.
 2. `constraints.allowed_parameters` is not included in canonical TLV encoding, so it is not cryptographically bound by `priv_sig` or `parent_token_hash`.
 3. Scope validation does not enforce several conditional SEP requirements for T3 / intent-bearing tokens.
 4. The repo is not presentation-clean for an SEP submission yet: package names, docs, and public-facing text still prominently carry Hawcx / HAAP branding and comparison material.
 
 ## Findings
 
-### 1. Critical: verifier accepts tokens without enforcing most scope constraints or template ceilings
+### 1. Critical: verifier does not bind authorization to the actual requested tool and skips most Step 13 checks
 
 Severity: Critical
 
 Why it matters:
-SEP r40 says Step 13 validates `tool`, `action`, `resource`, and `constraints`, and the repo’s own template interface exposes `max_rows`, `max_calls`, `time_window_sec`, `permitted_audiences`, and `min_trust_level`. In the implementation, the verifier only checks action membership and resource subset.
+SEP r40 says Step 13 validates `tool`, `action`, `resource`, and `constraints`, and the repo’s own template interface exposes `max_rows`, `max_calls`, `time_window_sec`, `permitted_audiences`, and `min_trust_level`. In the implementation, the verifier has no `requestedTool` input at all, and only checks action membership and resource subset.
 
 Evidence:
 
-- [`packages/tbac-core-ts/src/cascade/verify.ts`](/Users/raviramaraju/Projects/hx_mcp_tbac/packages/tbac-core-ts/src/cascade/verify.ts:56) exposes only `requestedAction` and `requestedResource` as request-time authorization inputs.
+- [`packages/tbac-core-ts/src/cascade/verify.ts`](/Users/raviramaraju/Projects/hx_mcp_tbac/packages/tbac-core-ts/src/cascade/verify.ts:56) exposes only `requestedAction` and `requestedResource` as request-time authorization inputs; there is no `requestedTool`.
+- [`packages/hawcx-mcp-auth/src/verifier/TbacTokenVerifier.ts`](/Users/raviramaraju/Projects/hx_mcp_tbac/packages/hawcx-mcp-auth/src/verifier/TbacTokenVerifier.ts:32) also only accepts `requestedAction` and `requestedResource`.
 - [`packages/tbac-core-ts/src/cascade/verify.ts`](/Users/raviramaraju/Projects/hx_mcp_tbac/packages/tbac-core-ts/src/cascade/verify.ts:227) begins Step 13.
 - [`packages/tbac-core-ts/src/cascade/verify.ts`](/Users/raviramaraju/Projects/hx_mcp_tbac/packages/tbac-core-ts/src/cascade/verify.ts:241) only checks `allowed_actions`.
 - [`packages/tbac-core-ts/src/cascade/verify.ts`](/Users/raviramaraju/Projects/hx_mcp_tbac/packages/tbac-core-ts/src/cascade/verify.ts:250) only checks `requestedAction` and `requestedResource`.
@@ -44,6 +45,7 @@ Evidence:
 
 Impact:
 
+- A token can be presented against the wrong tool and the verifier has no direct way to detect that mismatch.
 - A token carrying `constraints.allowed_parameters` is accepted without any argument binding.
 - A tool template that requires `min_trust_level: 3` can still be used by a `trust_level: 0/1/2` token.
 - Template `permitted_audiences` is not consulted.
@@ -51,9 +53,9 @@ Impact:
 
 Recommendation:
 
-- Extend `VerifyInputs` with the request fields Step 13 actually needs: tool arguments, selected audience, and any execution metadata needed for numeric guardrails.
+- Extend `VerifyInputs` with the request fields Step 13 actually needs: `requestedTool`, tool arguments, selected audience, and any execution metadata needed for numeric guardrails.
 - Enforce all Step 13 constraint checks explicitly.
-- Add tests that prove denial on `min_trust_level`, `permitted_audiences`, and `allowed_parameters` violations.
+- Add tests that prove denial on tool mismatch, `min_trust_level`, `permitted_audiences`, and `allowed_parameters` violations.
 
 ### 2. High: `allowed_parameters` is not canonicalized, so it is not cryptographically sealed
 
@@ -74,10 +76,12 @@ Impact:
 
 - The implementation claims parameter-bound authorization, but the cryptographic binding excludes the parameter constraint object.
 - Delegation-chain hashes also ignore that field, which weakens attenuation integrity if parameter constraints are introduced later.
+- Unknown constraint fields are also effectively treated leniently at the schema/canonicalization layer instead of being rejected unless `x-`-prefixed, contrary to SEP §3.3.
 
 Recommendation:
 
 - Implement canonical TLV encoding/decoding for `allowed_parameters` exactly per Appendix A.
+- Reject unknown constraint keys unless they begin with `x-`.
 - Add conformance vectors and round-trip tests that include escaped wildcard patterns.
 - Treat current behavior as non-conformant rather than “deferred”, because the field is already in the schema and registry.
 
