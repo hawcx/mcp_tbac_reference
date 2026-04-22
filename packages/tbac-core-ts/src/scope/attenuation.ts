@@ -39,6 +39,9 @@ function numLe(child: number | undefined, parent: number | undefined): boolean {
  *   - 'rs'   — INSUFFICIENT_PRIVILEGE / TBAC_SCOPE_EVALUATION with
  *              internalTag 'r40.8.1.rs_cascade.widening_attack'
  */
+// SEP r41 §8.1: the subset predicate is NOT transitive across literal-
+// prefix and wildcard rules. Always evaluate the (child, parent) pair
+// directly; do not chain subset judgments.
 export function checkAttenuation(
   child: ScopeJson,
   parent: ScopeJson,
