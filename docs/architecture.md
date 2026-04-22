@@ -46,15 +46,17 @@ This reference implementation exercises Profile E's data flow on one Assembler. 
 
 ## Trust boundaries
 
-Trust tiers per SEP §11.1. The table below lists each component, the key material it holds, and why it sits at that trust level:
+Client-side trust hierarchy per SEP §11.1. The table below lists each component in the client's trust boundary, the key material it holds, and why it sits at that trust level. The Resource Server's trust posture on the server side is described separately below.
 
 | Component | Key material | Why this tier |
 |---|---|---|
-| Authenticator | X3DH identity key material | Performs X3DH 4-DH key agreement with the AS; relays `session_id`, `verifier_secret`, `mutual_auth` to TQS via authenticated local IPC |
-| TQS | `K_session`, SEK, `K_priv[epoch]` | Mints tokens; never makes egress HTTP |
-| Assembler | Per-token `response_key` | Holds crypto only for the duration of one call |
-| Agent/LLM | **none** | The most prompt-injection-vulnerable component holds no credentials |
-| Resource Server (key-table) | `K_session`, `verifier_secret`, `mutual_auth`, `SEK_PK` per session | Performs the verification cascade; server-side counterpart of the TQS's session material |
+| Authenticator | X3DH identity key material (IK private key) | Small binary, IPC-only; performs X3DH 4-DH key agreement with the AS and relays `session_id`, `verifier_secret`, `mutual_auth` to TQS via authenticated local IPC. Highest crypto trust. |
+| TQS | `K_session`, SEK, `K_priv[epoch]` | Small binary, IPC-only; mints tokens, never makes egress HTTP. High crypto trust. |
+| Assembler | Per-token `response_key` (ephemeral) | Small binary, IPC + egress HTTP; holds crypto only for the duration of one call. Medium crypto trust. |
+| Supervisor/Scheduler | none | Process lifecycle and dispatch only; holds no key material and does not participate in token verification. No crypto trust. |
+| Agent/LLM | **none** | LLM, plugins, prompt context — the most prompt-injection-vulnerable component; holds no credentials. No crypto trust. |
+
+**Server-side trust note.** The Resource Server is outside the client-side trust hierarchy above because it sits in a different trust boundary. On the server side, the RS holds its session key-table — `{K_session, verifier_secret, mutual_auth, SEK_PK}` per session — provisioned by the AS out-of-band at session setup (SEP §4.1). The RS's trust posture is distinct from the client components: it verifies tokens minted by the client's TQS using material provisioned by the AS, with no per-token communication with either the AS or the TQS.
 
 If an attacker fully compromises the Agent, all they can do is send plaintext to the Assembler. They cannot mint tokens, forge PoP, or decrypt stored traffic.
 
