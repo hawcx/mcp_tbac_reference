@@ -56,7 +56,7 @@ Client-side trust hierarchy per SEP §11.1. The table below lists each component
 | Supervisor/Scheduler | none | Process lifecycle and dispatch only; holds no key material and does not participate in token verification. No crypto trust. |
 | Agent/LLM | **none** | LLM, plugins, prompt context — the most prompt-injection-vulnerable component; holds no credentials. No crypto trust. |
 
-**Server-side trust note.** The Resource Server is outside the client-side trust hierarchy above because it sits in a different trust boundary. On the server side, the RS holds its session key-table — `{K_session, verifier_secret, mutual_auth, SEK_PK}` per session — provisioned by the AS out-of-band at session setup (SEP §4.1). The RS's trust posture is distinct from the client components: it verifies tokens minted by the client's TQS using material provisioned by the AS, with no per-token communication with either the AS or the TQS.
+**Server-side trust note.** The Resource Server is outside the client-side trust hierarchy above because it sits in a different trust boundary. On the server side, the RS holds its session key-table — the fields provisioned by the AS are shown in the Components diagram above; the RS additionally holds `SEK_PK` per session — provisioned out-of-band at session setup (SEP §4.1). The RS's trust posture is distinct from the client components: it verifies tokens minted by the client's TQS using material provisioned by the AS, with no per-token communication with either the AS or the TQS.
 
 If an attacker fully compromises the Agent, all they can do is send plaintext to the Assembler. They cannot mint tokens, forge PoP, or decrypt stored traffic.
 
